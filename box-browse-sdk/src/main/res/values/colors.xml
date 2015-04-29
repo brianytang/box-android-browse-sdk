@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="box_primary">#ffe0e0e0</color>
+    <color name="box_primary_dark">#ff9e9e9e</color>
+</resources>

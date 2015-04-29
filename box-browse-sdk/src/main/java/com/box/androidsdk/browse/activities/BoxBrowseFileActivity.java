@@ -30,7 +30,7 @@ import java.util.Iterator;
  * This class is used to choose a particular file from the user's account and when chosen will return a result with a BoxFile in the extra
  * BoxBrowseFileActivity.EXTRA_BOX_FILE
  */
-public class BoxBrowseFileActivity extends BoxBrowseActivity {
+public class BoxBrowseFileActivity extends BoxBrowseActivity2 {
 
     /**
      * Extra serializable intent parameter that adds a {@link com.box.androidsdk.content.models.BoxFile} to the intent
@@ -212,7 +212,7 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
      * @return an intent to launch an instance of this activity.
      */
     public static Intent getLaunchIntent(Context context, final String folderId, final BoxSession session) {
-        Intent intent = BoxBrowseActivity.getLaunchIntent(context, folderId, session);
+        Intent intent = BoxBrowseActivity2.getLaunchIntent(context, folderId, session);
         intent.setClass(context, BoxBrowseFileActivity.class);
         return intent;
     }
@@ -243,7 +243,7 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
      * @return an intent to launch an instance of this activity.
      */
     public static Intent getLaunchIntent(Context context, final String folderId, final ArrayList<String> allowedExtensions, final BoxSession session) {
-        Intent intent = BoxBrowseActivity.getLaunchIntent(context, folderId, session);
+        Intent intent = BoxBrowseActivity2.getLaunchIntent(context, folderId, session);
         intent.setClass(context, BoxBrowseFileActivity.class);
         intent.putStringArrayListExtra(EXTRA_BOX_EXTENSION_FILTER, allowedExtensions);
         return intent;
@@ -303,7 +303,7 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
     /**
      * Adapter that disables certain types of files
      */
-    protected class FilePickerBoxListItemAdapter extends BoxBrowseActivity.FolderNavigationBoxListItemAdapter {
+    protected class FilePickerBoxListItemAdapter extends BoxBrowseActivity2.FolderNavigationBoxListItemAdapter {
 
         public FilePickerBoxListItemAdapter(Activity context, ThumbnailManager manager) {
             super(context, manager);

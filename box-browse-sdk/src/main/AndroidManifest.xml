@@ -1,4 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.box.androidsdk.browse">
+    package="com.box.androidsdk.browse" >
+    <application>
+        <activity
+            android:name=".activities.BoxBrowseActivity"
+            android:label="@string/title_activity_box_browse"
+            android:theme="@style/BrowseTheme" >
+        </activity>
+    </application>
 
 </manifest>

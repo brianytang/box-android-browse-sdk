@@ -1,0 +1,7 @@
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
+    <style name="BrowseTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/box_background</item>
+        <item name="colorPrimaryDark">@color/box_primary_dark</item>
+        <item name="colorAccent">@color/box_accent</item>
+    </style>
+</resources>

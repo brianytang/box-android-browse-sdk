@@ -86,7 +86,7 @@ public class BoxBrowseFolderActivity extends BoxBrowseFileActivity {
      * @return an intent to launch an instance of this activity.
      */
     public static Intent getLaunchIntent(Context context, final String folderId, final BoxSession session) {
-        Intent intent = BoxBrowseActivity.getLaunchIntent(context, folderId, session);
+        Intent intent = BoxBrowseActivity2.getLaunchIntent(context, folderId, session);
         intent.setClass(context, BoxBrowseFolderActivity.class);
         return intent;
     }
@@ -110,7 +110,7 @@ public class BoxBrowseFolderActivity extends BoxBrowseFileActivity {
     /**
      * Adapter that disables clicking on files.
      */
-    protected class FolderPickerBoxListItemAdapter extends BoxBrowseActivity.FolderNavigationBoxListItemAdapter {
+    protected class FolderPickerBoxListItemAdapter extends BoxBrowseActivity2.FolderNavigationBoxListItemAdapter {
 
         public FolderPickerBoxListItemAdapter(Activity context, ThumbnailManager manager) {
             super(context, manager);
