@@ -7,9 +7,8 @@
     <string name="box_browsesdk_session_is_not_authenticated">Session is not authenticated</string>
     <string name="box_browsesdk_no_item_selected">No item selected</string>
 
-<!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="box_browsesdk_all_files">All Files</string>
+
     <string name="title_activity_box_browse">Browse</string>
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
 </resources>

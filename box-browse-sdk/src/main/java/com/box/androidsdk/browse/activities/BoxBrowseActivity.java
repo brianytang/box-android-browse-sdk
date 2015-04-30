@@ -44,7 +44,7 @@ public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements 
         initToolbar();
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, BoxBrowseFragment.newInstance(mItem.getId(), mSession.getUserId()))
+                    .add(R.id.box_browsesdk_fragment_container, BoxBrowseFragment.newInstance(mItem.getId(), mSession.getUserId()))
                     .commit();
         }
     }
@@ -100,9 +100,9 @@ public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements 
      */
     public static Intent getLaunchIntent(Context context, final BoxFolder folder, final BoxSession session) {
         if (folder == null || SdkUtils.isBlank(folder.getId()))
-            throw new IllegalArgumentException("A valid folder must be provided for retrieving collaborations");
+            throw new IllegalArgumentException("A valid folder must be provided to browse");
         if (session == null || session.getUser() == null || SdkUtils.isBlank(session.getUser().getId()))
-            throw new IllegalArgumentException("A valid user must be provided for retrieving collaborations");
+            throw new IllegalArgumentException("A valid user must be provided to browse");
 
         Intent intent = new Intent(context, BoxBrowseActivity.class);
         intent.putExtra(EXTRA_ITEM, folder);

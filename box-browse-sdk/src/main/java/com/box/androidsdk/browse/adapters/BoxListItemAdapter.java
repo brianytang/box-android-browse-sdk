@@ -65,8 +65,8 @@ public class BoxListItemAdapter extends ArrayAdapter<BoxListItem> {
                 row = LayoutInflater.from(getContext()).inflate(R.layout.boxsdk_box_list_item, parent, false);
             }
             row.setTag(holder);
-            holder.setIconView((ImageView) row.findViewById(R.id.icon));
-            holder.setNameView((TextView) row.findViewById(R.id.name));
+            holder.setIconView((ImageView) row.findViewById(R.id.box_browsesdk_thumb_image));
+            holder.setNameView((TextView) row.findViewById(R.id.box_browsesdk_name_text));
             holder.setDescriptionView((TextView) row.findViewById(R.id.metaline_description));
             holder.mSpinner = (ProgressBar) row.findViewById(R.id.spinner);
         }
