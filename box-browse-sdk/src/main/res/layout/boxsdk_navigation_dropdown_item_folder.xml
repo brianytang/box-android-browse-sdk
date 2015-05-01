@@ -4,7 +4,6 @@
     android:layout_width="fill_parent"
     android:layout_height="50dp"
     android:background="@drawable/boxsdk_navigation_selector"
-    android:drawableLeft="@drawable/boxsdk_ic_breadcrumb_arrow"
     android:ellipsize="middle"
     android:gravity="center_vertical"
     android:paddingLeft="12dp"
@@ -12,3 +11,4 @@
     android:textColor="#FF1A74B0"
     android:textSize="20sp" 
     android:filterTouchesWhenObscured="true"/>
+    <!--android:drawableLeft="@drawable/boxsdk_ic_breadcrumb_arrow"-->

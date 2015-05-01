@@ -25,12 +25,11 @@
                 android:layout_height="34dip"
                 android:adjustViewBounds="true"
                 android:scaleType="fitCenter"
-                android:src="@drawable/boxsdk_icon_folder_personal" />
+                android:src="@drawable/ic_box_browsesdk_folder" />
             <ProgressBar
                 android:id="@+id/spinner"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:indeterminateDrawable="@drawable/boxsdk_progress_spinner"
                 android:visibility="gone" />
         </FrameLayout>
 

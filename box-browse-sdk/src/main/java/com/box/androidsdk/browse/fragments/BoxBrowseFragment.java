@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.widget.LinearLayoutManager;
@@ -69,6 +70,7 @@ public class BoxBrowseFragment extends Fragment {
     protected String mFolderName;
     protected BoxSession mSession;
     protected OnFragmentInteractionListener mListener;
+    protected FragmentActivity mActivity;
 
     protected BoxItemAdapter mAdapter;
     protected RecyclerView mItemsView;
@@ -163,25 +165,25 @@ public class BoxBrowseFragment extends Fragment {
             }
 
             if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
-                Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
+                Toast.makeText(mActivity, R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
                 // TODO: Call error handler
             }
 
             mThumbnailManager = initializeThumbnailManager();
 
             // Initialize broadcast managers
-            mLocalBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
+            mLocalBroadcastManager = LocalBroadcastManager.getInstance(mActivity);
             IntentFilter filters = initializeIntentFilters();
             mLocalBroadcastManager.registerReceiver(mBroadcastReceiver, filters);
 
-            mSession = new BoxSession(getActivity(), mUserId);
+            mSession = new BoxSession(mActivity, mUserId);
 
         }
     }
 
     private ThumbnailManager initializeThumbnailManager() {
         try {
-            return new ThumbnailManager(getActivity().getCacheDir());
+            return new ThumbnailManager(mActivity.getCacheDir());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             // TODO: should finish fragment
@@ -197,12 +199,12 @@ public class BoxBrowseFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Toolbar actionBar = (Toolbar) getActivity().findViewById(R.id.box_action_bar);
+        Toolbar actionBar = (Toolbar) mActivity.findViewById(R.id.box_action_bar);
         actionBar.setTitle(mFolderName);
 
         View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
         mItemsView = (RecyclerView) rootView.findViewById(R.id.items_recycler_view);
-        mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mItemsView.setLayoutManager(new LinearLayoutManager(mActivity));
         mAdapter = new BoxItemAdapter();
         mItemsView.setAdapter(mAdapter);
         mAdapter.add(new BoxListItem(mController.fetchFolder(), Controller.ACTION_FETCHED_FOLDER));
@@ -220,6 +222,7 @@ public class BoxBrowseFragment extends Fragment {
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+        mActivity = (FragmentActivity) activity;
         try {
             mListener = (OnFragmentInteractionListener) activity;
         } catch (ClassCastException e) {
@@ -236,7 +239,7 @@ public class BoxBrowseFragment extends Fragment {
 
     private void onFolderFetched(Intent intent) {
         if (!intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+            Toast.makeText(mActivity, getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -245,7 +248,7 @@ public class BoxBrowseFragment extends Fragment {
             BoxFolder folder = (BoxFolder) intent.getSerializableExtra(Controller.ARG_BOX_FOLDER);
             if (folder != null && folder.getItemCollection() != null) {
                 mAdapter.addAll(folder.getItemCollection());
-                getActivity().runOnUiThread(new Runnable() {
+                mActivity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         mAdapter.notifyDataSetChanged();
@@ -257,14 +260,14 @@ public class BoxBrowseFragment extends Fragment {
 
     private void onFolderItemsFetched(Intent intent) {
         if (!intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+            Toast.makeText(mActivity, getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
         if (mFolderId.equals(intent.getStringExtra(Controller.ARG_FOLDER_ID))) {
             BoxListItems items = (BoxListItems) intent.getSerializableExtra(Controller.ARG_BOX_COLLECTION);
             mAdapter.addAll(items);
-            getActivity().runOnUiThread(new Runnable() {
+            mActivity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mAdapter.notifyDataSetChanged();
@@ -308,7 +311,7 @@ public class BoxBrowseFragment extends Fragment {
         public void setLoading() {
             mThumbView.setVisibility(View.GONE);
             mProgressBar.setVisibility(View.VISIBLE);
-            mNameView.setText(getActivity().getResources().getString(R.string.boxsdk_Please_wait));
+            mNameView.setText(mActivity.getResources().getString(R.string.boxsdk_Please_wait));
         }
 
 
@@ -351,7 +354,7 @@ public class BoxBrowseFragment extends Fragment {
         public void onClick(View v) {
             if (mItem instanceof BoxFolder) {
                 BoxFolder folder = (BoxFolder) mItem;
-                FragmentTransaction trans = getActivity().getSupportFragmentManager().beginTransaction();
+                FragmentTransaction trans = mActivity.getSupportFragmentManager().beginTransaction();
                 BoxBrowseFragment browseFragment = newInstance(folder, mSession);
                 trans.replace(R.id.box_browsesdk_fragment_container, browseFragment)
                         .addToBackStack(TAG)
@@ -368,10 +371,7 @@ public class BoxBrowseFragment extends Fragment {
 
         @Override
         public BoxItemHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            BoxListItem item = mListItems.get(i);
-            View view = item != null && item.getBoxItem() != null && item.getBoxItem().getType().equals(BoxFolder.TYPE) ?
-                    LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.boxsdk_box_folder_list_item, viewGroup, false) :
-                    LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.boxsdk_box_list_item, viewGroup, false);
+            View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.boxsdk_box_list_item, viewGroup, false);
             return new BoxItemHolder(view);
         }
 

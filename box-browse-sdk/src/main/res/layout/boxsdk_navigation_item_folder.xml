@@ -10,8 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingLeft="4dp"
-        android:paddingRight="4dp"
-        android:src="@drawable/boxsdk_ic_breadcrumb_arrow" />
+        android:paddingRight="4dp" />
 
     <TextView
         android:id="@+id/textView_navigationItem"
