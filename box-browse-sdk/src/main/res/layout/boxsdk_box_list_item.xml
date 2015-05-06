@@ -17,6 +17,7 @@
             android:id="@+id/box_browsesdk_thumb_image"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:adjustViewBounds="true"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_box_browsesdk_blank" />

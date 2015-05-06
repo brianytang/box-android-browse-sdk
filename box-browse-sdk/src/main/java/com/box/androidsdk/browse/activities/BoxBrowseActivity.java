@@ -10,6 +10,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 import com.box.androidsdk.browse.R;
+import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
 import com.box.androidsdk.browse.fragments.BoxBrowseFragment;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxSession;
@@ -21,11 +22,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements BoxBrowseFragment.OnFragmentInteractionListener {
-
-    /**
-     * Extra intent parameter that adds a folder id to the intent
-     */
-    public static final String EXTRA_FOLDER_ID = "extraFolderId";
 
     /**
      * Extra intent parameter that adds a user id to the intent
@@ -44,7 +40,7 @@ public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements 
         initToolbar();
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.box_browsesdk_fragment_container, BoxBrowseFragment.newInstance(mItem.getId(), mSession.getUserId()))
+                    .add(R.id.box_browsesdk_fragment_container, BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId()))
                     .commit();
         }
     }

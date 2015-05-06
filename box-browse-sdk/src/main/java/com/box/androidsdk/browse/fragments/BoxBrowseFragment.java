@@ -12,11 +12,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,7 +29,6 @@ import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.browse.uidata.ThumbnailManager;
 import com.box.androidsdk.content.BoxApiFile;
-import com.box.androidsdk.content.BoxApiFolder;
 import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
@@ -37,7 +36,7 @@ import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
-import com.box.androidsdk.content.requests.BoxRequestsFolder;
+import com.box.androidsdk.content.requests.BoxRequestsFile;
 import com.box.androidsdk.content.utils.SdkUtils;
 
 import java.io.File;
@@ -57,38 +56,45 @@ import java.util.concurrent.TimeUnit;
  * Activities that contain this fragment must implement the
  * {@link BoxBrowseFragment.OnFragmentInteractionListener} interface
  * to handle interaction events.
- * Use the {@link BoxBrowseFragment#newInstance} factory method to
- * create an instance of this fragment.
  */
-public class BoxBrowseFragment extends Fragment {
+public abstract class BoxBrowseFragment extends Fragment {
 
-    private static final String ARG_FOLDER_ID = "argFolderId";
-    private static final String ARG_USER_ID = "argUserId";
-    public static final String ARG_FOLDER_NAME = "argFolderName";
+    public static final String ARG_ID = "argId";
+    public static final String ARG_USER_ID = "argUserId";
+    public static final String ARG_NAME = "argName";
 
     protected static final String TAG = BoxBrowseFragment.class.getName();
+
+    protected static final String ACTION_FETCHED_ITEMS = "BoxBrowseFragment_FetchedItems";
+    protected static final String ACTION_FETCHED_INFO = "BoxBrowseFragment_FetchedInfo";
+    protected static final String ACTION_DOWNLOADED_FILE_THUMBNAIL = "BoxBrowseFragment_DownloadedFileThumbnail";
+    protected static final String EXTRA_SUCCESS = "BoxBrowseFragment_ArgSuccess";
+    protected static final String EXTRA_ID = "BoxBrowseFragment_FolderId";
+    protected static final String EXTRA_FILE_ID = "BoxBrowseFragment_FileId";
+    protected static final String EXTRA_OFFSET = "BoxBrowseFragment_ArgOffset";
+    protected static final String EXTRA_LIMIT = "BoxBrowseFragment_Limit";
+    protected static final String EXTRA_FOLDER = "BoxBrowseFragment_Folder";
+    protected static final String EXTRA_COLLECTION = "BoxBrowseFragment_Collection";
 
     protected String mFolderId;
     protected String mUserId;
     protected String mFolderName;
     protected BoxSession mSession;
     protected OnFragmentInteractionListener mListener;
-    protected FragmentActivity mActivity;
 
     protected BoxItemAdapter mAdapter;
     protected RecyclerView mItemsView;
     protected ThumbnailManager mThumbnailManager;
-    protected Controller mController = new Controller();
 
-    private LocalBroadcastManager mLocalBroadcastManager;
+    protected LocalBroadcastManager mLocalBroadcastManager;
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Controller.ACTION_FETCHED_FOLDER)) {
+            if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
                 onFolderFetched(intent);
-            } else if (intent.getAction().equals(Controller.ACTION_FETCHED_FOLDER_ITEMS)) {
-                onFolderItemsFetched(intent);
-            } else if(intent.getAction().equals(Controller.ACTION_DOWNLOADED_FILE_THUMBNAIL)) {
+            } else if (intent.getAction().equals(ACTION_FETCHED_ITEMS)) {
+                onItemsFetched(intent);
+            } else if (intent.getAction().equals(ACTION_DOWNLOADED_FILE_THUMBNAIL)) {
                 onDownloadedThumbnail(intent);
             }
         }
@@ -97,7 +103,7 @@ public class BoxBrowseFragment extends Fragment {
     private static ThreadPoolExecutor mApiExecutor;
     private static ThreadPoolExecutor mThumbnailExecutor;
 
-    private ThreadPoolExecutor getApiExecutor() {
+    protected ThreadPoolExecutor getApiExecutor() {
         if (mApiExecutor == null || mApiExecutor.isShutdown()) {
             mApiExecutor = new ThreadPoolExecutor(1, 1, 3600, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
         }
@@ -118,53 +124,10 @@ public class BoxBrowseFragment extends Fragment {
 
     private IntentFilter initializeIntentFilters() {
         IntentFilter filter = new IntentFilter();
-        filter.addAction(Controller.ACTION_FETCHED_FOLDER);
-        filter.addAction(Controller.ACTION_FETCHED_FOLDER_ITEMS);
-        filter.addAction(Controller.ACTION_DOWNLOADED_FILE_THUMBNAIL);
+        filter.addAction(ACTION_FETCHED_INFO);
+        filter.addAction(ACTION_FETCHED_ITEMS);
+        filter.addAction(ACTION_DOWNLOADED_FILE_THUMBNAIL);
         return filter;
-    }
-
-    /**
-     * Use this factory method to create a new instance of the Browse fragment
-     * with default configurations
-     *
-     * @param folder    the folder to browse
-     * @param session   the session that the contents will be loaded for
-     * @return A new instance of fragment BoxBrowseFragment.
-     */
-    public static BoxBrowseFragment newInstance(BoxFolder folder, BoxSession session) {
-        return newInstance(folder.getId(), session.getUserId(), folder.getName());
-    }
-
-    /**
-     * Use this factory method to create a new instance of the Browse fragment
-     * with default configurations
-     *
-     * @param folderId the id of the folder to browse
-     * @param userId   the id of the user that the contents will be loaded for
-     * @return A new instance of fragment BoxBrowseFragment.
-     */
-    public static BoxBrowseFragment newInstance(String folderId, String userId) {
-        return newInstance(folderId, userId, null);
-    }
-
-    /**
-     * Use this factory method to create a new instance of the Browse fragment
-     * with default configurations
-     *
-     * @param folderId      the id of the folder to browse
-     * @param userId        the id of the user that the contents will be loaded for
-     * @param folderName    the name of the folder that will be shown in the action bar
-     * @return A new instance of fragment BoxBrowseFragment.
-     */
-    public static BoxBrowseFragment newInstance(String folderId, String userId, String folderName) {
-        BoxBrowseFragment fragment = new BoxBrowseFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_FOLDER_ID, folderId);
-        args.putString(ARG_USER_ID, userId);
-        args.putString(ARG_FOLDER_NAME, folderName);
-        fragment.setArguments(args);
-        return fragment;
     }
 
     public BoxBrowseFragment() {
@@ -175,33 +138,33 @@ public class BoxBrowseFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mFolderId = getArguments().getString(ARG_FOLDER_ID);
+            mFolderId = getArguments().getString(ARG_ID);
             mUserId = getArguments().getString(ARG_USER_ID);
-            mFolderName = getArguments().getString(ARG_FOLDER_NAME);
+            mFolderName = getArguments().getString(ARG_NAME);
             if (SdkUtils.isBlank(mFolderName) && mFolderId.equals(BoxConstants.ROOT_FOLDER_ID)) {
-               mFolderName =  getString(R.string.box_browsesdk_all_files);
+                mFolderName = getString(R.string.box_browsesdk_all_files);
             }
 
             if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
-                Toast.makeText(mActivity, R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
+                Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
                 // TODO: Call error handler
             }
 
             mThumbnailManager = initializeThumbnailManager();
 
             // Initialize broadcast managers
-            mLocalBroadcastManager = LocalBroadcastManager.getInstance(mActivity);
+            mLocalBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
             IntentFilter filters = initializeIntentFilters();
             mLocalBroadcastManager.registerReceiver(mBroadcastReceiver, filters);
 
-            mSession = new BoxSession(mActivity, mUserId);
+            mSession = new BoxSession(getActivity(), mUserId);
 
         }
     }
 
     private ThumbnailManager initializeThumbnailManager() {
         try {
-            return new ThumbnailManager(mActivity.getCacheDir());
+            return new ThumbnailManager(getActivity().getCacheDir());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             // TODO: should finish fragment
@@ -217,16 +180,16 @@ public class BoxBrowseFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        Toolbar actionBar = (Toolbar) mActivity.findViewById(R.id.box_action_bar);
+        Toolbar actionBar = (Toolbar) getActivity().findViewById(R.id.box_action_bar);
         actionBar.setTitle(mFolderName);
 
         View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
         mItemsView = (RecyclerView) rootView.findViewById(R.id.items_recycler_view);
         mItemsView.addItemDecoration(new BoxItemDividerDecoration(getResources()));
-        mItemsView.setLayoutManager(new LinearLayoutManager(mActivity));
+        mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mAdapter = new BoxItemAdapter();
         mItemsView.setAdapter(mAdapter);
-        mAdapter.add(new BoxListItem(mController.fetchFolder(), Controller.ACTION_FETCHED_FOLDER));
+        mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
         mAdapter.notifyDataSetChanged();
         return rootView;
     }
@@ -241,7 +204,6 @@ public class BoxBrowseFragment extends Fragment {
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        mActivity = (FragmentActivity) activity;
         try {
             mListener = (OnFragmentInteractionListener) activity;
         } catch (ClassCastException e) {
@@ -257,17 +219,21 @@ public class BoxBrowseFragment extends Fragment {
     }
 
     private void onFolderFetched(Intent intent) {
-        if (!intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-            Toast.makeText(mActivity, getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+        FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
         mAdapter.remove(intent.getAction());
-        if (mFolderId.equals(intent.getStringExtra(Controller.ARG_FOLDER_ID))) {
-            BoxFolder folder = (BoxFolder) intent.getSerializableExtra(Controller.ARG_BOX_FOLDER);
+        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
+            BoxFolder folder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
             if (folder != null && folder.getItemCollection() != null) {
                 mAdapter.addAll(folder.getItemCollection());
-                mActivity.runOnUiThread(new Runnable() {
+                activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         mAdapter.notifyDataSetChanged();
@@ -279,24 +245,28 @@ public class BoxBrowseFragment extends Fragment {
                 int limit = folder.getItemCollection().limit().intValue() - 1;
                 if (offset + limit < folder.getItemCollection().fullSize()) {
                     // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
-                    mAdapter.add(new BoxListItem(mController.fetchFolderItems(mFolderId, offset + limit, 1000),
-                            Controller.ACTION_FETCHED_FOLDER_ITEMS));
+                    mAdapter.add(new BoxListItem(fetchItems(mFolderId, offset + limit, 1000),
+                            ACTION_FETCHED_ITEMS));
                 }
             }
         }
     }
 
-    private void onFolderItemsFetched(Intent intent) {
-        if (!intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-            Toast.makeText(mActivity, getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+    protected void onItemsFetched(Intent intent) {
+        FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
         mAdapter.remove(intent.getAction());
-        if (mFolderId.equals(intent.getStringExtra(Controller.ARG_FOLDER_ID))) {
-            BoxListItems items = (BoxListItems) intent.getSerializableExtra(Controller.ARG_BOX_COLLECTION);
+        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
+            BoxListItems items = (BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION);
             mAdapter.addAll(items);
-            mActivity.runOnUiThread(new Runnable() {
+            activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     mAdapter.notifyDataSetChanged();
@@ -304,15 +274,17 @@ public class BoxBrowseFragment extends Fragment {
             });
 
 
-            int offset = intent.getIntExtra(Controller.ARG_OFFSET, -1);
-            int limit = intent.getIntExtra(Controller.ARG_LIMIT, -1);
+            int offset = intent.getIntExtra(EXTRA_OFFSET, -1);
+            int limit = intent.getIntExtra(EXTRA_LIMIT, -1);
             if (offset + limit < items.fullSize()) {
                 // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
-                mAdapter.add(new BoxListItem(mController.fetchFolderItems(mFolderId, offset + limit, 1000),
-                        Controller.ACTION_FETCHED_FOLDER_ITEMS));
+                mAdapter.add(new BoxListItem(fetchItems(mFolderId, offset + limit, 1000),
+                        ACTION_FETCHED_ITEMS));
             }
         }
     }
+
+    protected abstract void onItemTapped(BoxItem item);
 
     /**
      * Handles showing new thumbnails after they have been downloaded.
@@ -320,8 +292,8 @@ public class BoxBrowseFragment extends Fragment {
      * @param intent
      */
     protected void onDownloadedThumbnail(final Intent intent) {
-        if (intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-            mAdapter.update(intent.getStringExtra(Controller.ARG_FILE_ID));
+        if (intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+            mAdapter.update(intent.getStringExtra(EXTRA_FILE_ID));
         }
     }
 
@@ -377,11 +349,11 @@ public class BoxBrowseFragment extends Fragment {
             mItem = item;
             mNameView.setText(item.getName());
             String description = item.getModifiedAt() != null ?
-                String.format(Locale.ENGLISH, "%s  • %s",
-                        //TODO: Need to localize date format
-                        new SimpleDateFormat("MMM d yyyy").format(item.getModifiedAt()).toUpperCase(),
-                        localFileSizeToDisplay(item.getSize())) :
-                localFileSizeToDisplay(item.getSize());
+                    String.format(Locale.ENGLISH, "%s  • %s",
+                            //TODO: Need to localize date format
+                            new SimpleDateFormat("MMM d yyyy").format(item.getModifiedAt()).toUpperCase(),
+                            localFileSizeToDisplay(item.getSize())) :
+                    localFileSizeToDisplay(item.getSize());
             mMetaDescription.setText(description);
             mThumbnailManager.setThumbnailIntoView(mThumbView, item);
             mProgressBar.setVisibility(View.GONE);
@@ -390,10 +362,14 @@ public class BoxBrowseFragment extends Fragment {
         }
 
         public void setLoading() {
+            FragmentActivity activity = getActivity();
+            if (activity == null) {
+                return;
+            }
             mThumbView.setVisibility(View.GONE);
             mProgressBar.setVisibility(View.VISIBLE);
             mMetaDescription.setVisibility(View.GONE);
-            mNameView.setText(mActivity.getResources().getString(R.string.boxsdk_Please_wait));
+            mNameView.setText(activity.getResources().getString(R.string.boxsdk_Please_wait));
         }
 
         public BoxItem getItem() {
@@ -437,20 +413,11 @@ public class BoxBrowseFragment extends Fragment {
 
         @Override
         public void onClick(View v) {
-            if (mItem instanceof BoxFolder) {
-                BoxFolder folder = (BoxFolder) mItem;
-                FragmentTransaction trans = mActivity.getSupportFragmentManager().beginTransaction();
-                BoxBrowseFragment browseFragment = newInstance(folder, mSession);
-                trans.replace(R.id.box_browsesdk_fragment_container, browseFragment)
-                        .addToBackStack(TAG)
-                        .commit();
-            } else {
-
-            }
+            onItemTapped(mItem);
         }
     }
 
-    private class BoxItemAdapter extends RecyclerView.Adapter<BoxItemHolder> {
+    protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemHolder> {
         protected ArrayList<BoxListItem> mListItems = new ArrayList<BoxListItem>();
         protected HashMap<String, BoxListItem> mItemsMap = new HashMap<String, BoxListItem>();
 
@@ -473,14 +440,14 @@ public class BoxBrowseFragment extends Fragment {
                 // Fetch thumbnails for media file types
                 if (item.getBoxItem() instanceof BoxFile && isMediaType(item.getBoxItem().getName())) {
                     if (item.getTask() == null) {
-                        item.setTask(mController.downloadThumbnail(item.getBoxItem().getId(),
+                        item.setTask(downloadThumbnail(item.getBoxItem().getId(),
                                 mThumbnailManager.getThumbnailForFile(item.getBoxItem().getId()), boxItemHolder));
                     } else if (item.getTask().isDone()) {
                         try {
                             Intent intent = (Intent) item.getTask().get();
                             // if we were unable to get this thumbnail before try it again.
-                            if (!intent.getBooleanExtra(Controller.ARG_SUCCESS, false)) {
-                                item.setTask(mController.downloadThumbnail(item.getBoxItem().getId(),
+                            if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+                                item.setTask(downloadThumbnail(item.getBoxItem().getId(),
                                         mThumbnailManager.getThumbnailForFile(item.getBoxItem().getId()), boxItemHolder));
                             }
                         } catch (Exception e) {
@@ -566,139 +533,76 @@ public class BoxBrowseFragment extends Fragment {
     public interface OnFragmentInteractionListener {
 
         // TODO: Update argument type and name
-        public void onFragmentInteraction(Uri uri);
+        void onFragmentInteraction(Uri uri);
     }
 
 
-    public class Controller {
+    /**
+     * Fetch a Box folder.
+     *
+     * @return A FutureTask that is tasked with fetching information on the given folder.
+     */
+    public abstract FutureTask<Intent> fetchInfo();
 
-        public static final String ACTION_FETCHED_FOLDER_ITEMS = "PickerActivity_FetchedFolderItems";
-        public static final String ACTION_FETCHED_FOLDER = "PickerActivity_FetchedFolder";
-        public static final String ACTION_DOWNLOADED_FILE_THUMBNAIL = "PickerActivity_DownloadedFileThumbnail";
-        public static final String ARG_SUCCESS = "PickerActivity_ArgSuccess";
-        public static final String ARG_FOLDER_ID = "PickerActivity_FolderId";
-        public static final String ARG_FILE_ID = "PickerActivity_FileId";
-        public static final String ARG_OFFSET = "PickerActivity_ArgOffset";
-        public static final String ARG_LIMIT = "PickerActivity_Limit";
-        public static final String ARG_BOX_FOLDER = "PickerActivity_Folde";
-        public static final String ARG_BOX_COLLECTION = "PickerActivity_Collection";
+    /**
+     * Fetch items from folder using given offset and limit.
+     *
+     * @param folderId Folder id to be fetched.
+     * @return A FutureTask that is tasked with fetching information on the given folder.
+     */
+    public abstract FutureTask<Intent> fetchItems(final String folderId, final int offset, final int limit);
 
-        /**
-         * Fetch a Box folder.
-         *
-         * @return A FutureTask that is tasked with fetching information on the given folder.
-         */
-        public FutureTask<Intent> fetchFolder() {
-            return new FutureTask<Intent>(new Callable<Intent>() {
+    /**
+     * Download the thumbnail for a given file.
+     *
+     * @param fileId file id to download thumbnail for.
+     * @return A FutureTask that is tasked with fetching information on the given folder.
+     */
+    private FutureTask<Intent> downloadThumbnail(final String fileId, final File downloadLocation, final BoxItemHolder holder) {
+        return new FutureTask<Intent>(new Callable<Intent>() {
 
-                @Override
-                public Intent call() throws Exception {
-                    Intent intent = new Intent();
-                    intent.setAction(ACTION_FETCHED_FOLDER);
-                    intent.putExtra(ARG_FOLDER_ID, mFolderId);
-                    try {
-                        BoxRequestsFolder.GetFolderInfo req = new BoxApiFolder(mSession).getInfoRequest(mFolderId)
-                                // TODO: Should clean-up to only include required fields
-                                .setFields(BoxFolder.ALL_FIELDS);
-                        BoxFolder bf = req.send();
-                        if (bf != null) {
-                            intent.putExtra(ARG_SUCCESS, true);
-                            intent.putExtra(Controller.ARG_BOX_FOLDER, bf);
-                        }
-
-                    } catch (BoxException e) {
-                        e.printStackTrace();
-                        intent.putExtra(ARG_SUCCESS, false);
-                    } finally {
-                        mLocalBroadcastManager.sendBroadcast(intent);
+            @Override
+            public Intent call() throws Exception {
+                Intent intent = new Intent();
+                intent.setAction(ACTION_DOWNLOADED_FILE_THUMBNAIL);
+                intent.putExtra(EXTRA_FILE_ID, fileId);
+                intent.putExtra(EXTRA_SUCCESS, false);
+                try {
+                    // no need to continue downloading thumbnail if we already have a thumbnail
+                    if (downloadLocation.exists() && downloadLocation.length() > 0) {
+                        intent.putExtra(EXTRA_SUCCESS, false);
+                        return intent;
+                    }
+                    // no need to continue downloading thumbnail if we are not viewing this thumbnail.
+                    if (holder.getItem() == null || !(holder.getItem() instanceof BoxFile)
+                            || !holder.getItem().getId().equals(fileId)) {
+                        intent.putExtra(EXTRA_SUCCESS, false);
+                        return intent;
                     }
 
-                    return intent;
-                }
-            });
-
-        }
-
-        /**
-         * Fetch items from folder using given offset and limit.
-         *
-         * @param folderId Folder id to be fetched.
-         * @return A FutureTask that is tasked with fetching information on the given folder.
-         */
-        public FutureTask<Intent> fetchFolderItems(final String folderId, final int offset, final int limit) {
-            return new FutureTask<Intent>(new Callable<Intent>() {
-
-                @Override
-                public Intent call() throws Exception {
-                    Intent intent = new Intent();
-                    intent.setAction(ACTION_FETCHED_FOLDER_ITEMS);
-                    intent.putExtra(ARG_OFFSET, offset);
-                    intent.putExtra(ARG_LIMIT, limit);
-                    intent.putExtra(ARG_FOLDER_ID, folderId);
-                    try {
-
-                        // this call the collection is just BoxObjectItems and each does not appear to be an instance of BoxItem.
-                        ArrayList<String> itemFields = new ArrayList<String>();
-                        String[] fields = new String[]{BoxFile.FIELD_NAME, BoxFile.FIELD_SIZE, BoxFile.FIELD_OWNED_BY, BoxFolder.FIELD_HAS_COLLABORATIONS, BoxFolder.FIELD_IS_EXTERNALLY_OWNED};
-                        BoxApiFolder api = new BoxApiFolder(mSession);
-                        BoxListItems items = api.getItemsRequest(folderId).setLimit(limit).setOffset(offset).setFields(fields).send();
-                        intent.putExtra(ARG_SUCCESS, true);
-                        intent.putExtra(Controller.ARG_BOX_COLLECTION, items);
-                    } catch (BoxException e) {
-                        e.printStackTrace();
-                        intent.putExtra(ARG_SUCCESS, false);
-                    } finally {
-                        mLocalBroadcastManager.sendBroadcast(intent);
+                    BoxApiFile api = new BoxApiFile(mSession);
+                    DisplayMetrics metrics = getResources().getDisplayMetrics();
+                    int thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_128;
+                    if (metrics.density <= DisplayMetrics.DENSITY_MEDIUM) {
+                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_32;
+                    } else if (metrics.density <= DisplayMetrics.DENSITY_HIGH) {
+                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_64;
                     }
-
-                    return intent;
-                }
-            });
-
-        }
-
-        /**
-         * Download the thumbnail for a given file.
-         *
-         * @param fileId file id to download thumbnail for.
-         * @return A FutureTask that is tasked with fetching information on the given folder.
-         */
-        public FutureTask<Intent> downloadThumbnail(final String fileId, final File downloadLocation, final BoxItemHolder holder) {
-            return new FutureTask<Intent>(new Callable<Intent>() {
-
-                @Override
-                public Intent call() throws Exception {
-                    Intent intent = new Intent();
-                    intent.setAction(ACTION_DOWNLOADED_FILE_THUMBNAIL);
-                    intent.putExtra(ARG_FILE_ID, fileId);
-                    intent.putExtra(ARG_SUCCESS, false);
-                    try {
-                        // no need to continue downloading thumbnail if we already have a thumbnail
-                        if (downloadLocation.exists() && downloadLocation.length() > 0) {
-                            intent.putExtra(ARG_SUCCESS, false);
-                            return intent;
-                        }
-                        // no need to continue downloading thumbnail if we are not viewing this thumbnail.
-                        if (holder.getItem() == null || !(holder.getItem() instanceof BoxFile)
-                                || !holder.getItem().getId().equals(fileId)) {
-                            intent.putExtra(ARG_SUCCESS, false);
-                            return intent;
-                        }
-
-                        BoxApiFile api = new BoxApiFile(mSession);
-                        api.getDownloadThumbnailRequest(downloadLocation, fileId).send();
-                        if (downloadLocation.exists()) {
-                            intent.putExtra(ARG_SUCCESS, true);
-                        }
-                    } catch (BoxException e) {
-                        intent.putExtra(ARG_SUCCESS, false);
-                    } finally {
-                        mLocalBroadcastManager.sendBroadcast(intent);
+                    api.getDownloadThumbnailRequest(downloadLocation, fileId)
+                            .setMinHeight(thumbSize)
+                            .setMinWidth(thumbSize)
+                            .send();
+                    if (downloadLocation.exists()) {
+                        intent.putExtra(EXTRA_SUCCESS, true);
                     }
-
-                    return intent;
+                } catch (BoxException e) {
+                    intent.putExtra(EXTRA_SUCCESS, false);
+                } finally {
+                    mLocalBroadcastManager.sendBroadcast(intent);
                 }
-            });
-        }
+
+                return intent;
+            }
+        });
     }
 }
