@@ -26,12 +26,12 @@
         </activity>
 
         <activity
-            android:name="com.box.androidsdk.browse.activities.BoxBrowseFileActivity"
+            android:name="com.box.androidsdk.browse.activities.BoxBrowseFileActivity2"
             android:label="BrowseTest" >
         </activity>
 
         <activity
-            android:name="com.box.androidsdk.browse.activities.BoxBrowseFolderActivity"
+            android:name="com.box.androidsdk.browse.activities.BoxBrowseFolderActivity2"
             android:label="BrowseTest" >
         </activity>
     </application>

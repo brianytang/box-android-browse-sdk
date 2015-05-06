@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.box.androidsdk.browse.activities.BoxBrowseActivity;
 import com.box.androidsdk.browse.activities.BoxBrowseFileActivity;
 import com.box.androidsdk.browse.activities.BoxBrowseFolderActivity;
 import com.box.androidsdk.content.BoxConfig;
@@ -24,7 +23,6 @@ public class SampleBrowseActivity extends ActionBarActivity {
 
     private Button btnFilePicker;
     private Button btnFolderPicker;
-    private Button btnBrowse;
 
     private BoxSession session;
 
@@ -42,16 +40,13 @@ public class SampleBrowseActivity extends ActionBarActivity {
     }
 
     private void launchFilePicker() {
-        startActivityForResult(BoxBrowseFileActivity.getLaunchIntent(this, "0", session), REQUEST_CODE_FILE_PICKER);
+        startActivityForResult(BoxBrowseFileActivity.getLaunchIntent(this, BoxFolder.createFromId("0"), session), REQUEST_CODE_FILE_PICKER);
     }
 
     private void launchFolderPicker() {
-        startActivityForResult(BoxBrowseFolderActivity.getLaunchIntent(this, "0", session), REQUEST_CODE_FOLDER_PICKER);
+        startActivityForResult(BoxBrowseFolderActivity.getLaunchIntent(this, BoxFolder.createFromId("0"), session), REQUEST_CODE_FOLDER_PICKER);
     }
 
-    private void launchBrowse() {
-        startActivityForResult(BoxBrowseActivity.getLaunchIntent(this, BoxFolder.createFromId("0"), session), REQUEST_CODE_FILE_PICKER);
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -79,7 +74,6 @@ public class SampleBrowseActivity extends ActionBarActivity {
     private void initUI() {
         btnFilePicker = (Button) findViewById(R.id.btnFilePicker);
         btnFolderPicker = (Button) findViewById(R.id.btnFolderPicker);
-        btnBrowse = (Button) findViewById(R.id.btnBrowse);
         btnFilePicker.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -90,12 +84,6 @@ public class SampleBrowseActivity extends ActionBarActivity {
             @Override
             public void onClick(View view) {
                 launchFolderPicker();
-            }
-        });
-        btnBrowse.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                launchBrowse();
             }
         });
     }

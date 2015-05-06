@@ -8,10 +8,10 @@ import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -91,7 +91,7 @@ public abstract class BoxBrowseFragment extends Fragment {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
-                onFolderFetched(intent);
+                onFolderInfoFetched(intent);
             } else if (intent.getAction().equals(ACTION_FETCHED_ITEMS)) {
                 onItemsFetched(intent);
             } else if (intent.getAction().equals(ACTION_DOWNLOADED_FILE_THUMBNAIL)) {
@@ -181,7 +181,9 @@ public abstract class BoxBrowseFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         Toolbar actionBar = (Toolbar) getActivity().findViewById(R.id.box_action_bar);
-        actionBar.setTitle(mFolderName);
+        if (actionBar != null) {
+            actionBar.setTitle(mFolderName);
+        }
 
         View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
         mItemsView = (RecyclerView) rootView.findViewById(R.id.items_recycler_view);
@@ -192,13 +194,6 @@ public abstract class BoxBrowseFragment extends Fragment {
         mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
         mAdapter.notifyDataSetChanged();
         return rootView;
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
     }
 
     @Override
@@ -218,7 +213,7 @@ public abstract class BoxBrowseFragment extends Fragment {
         mListener = null;
     }
 
-    private void onFolderFetched(Intent intent) {
+    private void onFolderInfoFetched(Intent intent) {
         FragmentActivity activity = getActivity();
         if (activity == null) {
             return;
@@ -228,9 +223,10 @@ public abstract class BoxBrowseFragment extends Fragment {
             return;
         }
 
+        BoxFolder folder = null;
         mAdapter.remove(intent.getAction());
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-            BoxFolder folder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
+            folder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
             if (folder != null && folder.getItemCollection() != null) {
                 mAdapter.addAll(folder.getItemCollection());
                 activity.runOnUiThread(new Runnable() {
@@ -249,6 +245,10 @@ public abstract class BoxBrowseFragment extends Fragment {
                             ACTION_FETCHED_ITEMS));
                 }
             }
+        }
+
+        if (mListener != null) {
+            mListener.onFolderLoaded(folder);
         }
     }
 
@@ -283,9 +283,6 @@ public abstract class BoxBrowseFragment extends Fragment {
             }
         }
     }
-
-    protected abstract void onItemTapped(BoxItem item);
-
     /**
      * Handles showing new thumbnails after they have been downloaded.
      *
@@ -329,8 +326,6 @@ public abstract class BoxBrowseFragment extends Fragment {
         BoxItem mItem;
         ImageView mThumbView;
         TextView mNameView;
-        TextView mSizeView;
-        TextView mUpdatedView;
         TextView mMetaDescription;
         ProgressBar mProgressBar;
 
@@ -339,8 +334,6 @@ public abstract class BoxBrowseFragment extends Fragment {
             itemView.setOnClickListener(this);
             mThumbView = (ImageView) itemView.findViewById(R.id.box_browsesdk_thumb_image);
             mNameView = (TextView) itemView.findViewById(R.id.box_browsesdk_name_text);
-            mSizeView = (TextView) itemView.findViewById(R.id.box_browsesdk_size_text);
-            mUpdatedView = (TextView) itemView.findViewById(R.id.box_browsesdk_updated_text);
             mMetaDescription = (TextView) itemView.findViewById(R.id.metaline_description);
             mProgressBar = (ProgressBar) itemView.findViewById((R.id.spinner));
         }
@@ -374,6 +367,30 @@ public abstract class BoxBrowseFragment extends Fragment {
 
         public BoxItem getItem() {
             return mItem;
+        }
+
+        @Override
+        public void onClick(View v) {
+
+            if (mListener != null) {
+                if (mListener.handleOnItemClick(mItem)) {
+                    FragmentActivity activity = getActivity();
+                    if (activity == null) {
+                        return;
+                    }
+
+                    if (mItem instanceof BoxFolder) {
+                        BoxFolder folder = (BoxFolder) mItem;
+                        FragmentTransaction trans = activity.getSupportFragmentManager().beginTransaction();
+
+                        // All fragments will always navigate into folders
+                        BoxBrowseFolderFragment browseFolderFragment = BoxBrowseFolderFragment.newInstance(folder, mSession);
+                        trans.replace(R.id.box_browsesdk_fragment_container, browseFolderFragment)
+                                .addToBackStack(TAG)
+                                .commit();
+                    }
+                }
+            }
         }
 
         /**
@@ -410,11 +427,6 @@ public abstract class BoxBrowseFragment extends Fragment {
             }
             return textSize;
         }
-
-        @Override
-        public void onClick(View v) {
-            onItemTapped(mItem);
-        }
     }
 
     protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemHolder> {
@@ -423,7 +435,7 @@ public abstract class BoxBrowseFragment extends Fragment {
 
         @Override
         public BoxItemHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.boxsdk_box_list_item, viewGroup, false);
+            View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
             return new BoxItemHolder(view);
         }
 
@@ -522,18 +534,24 @@ public abstract class BoxBrowseFragment extends Fragment {
 
     /**
      * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
+     * fragment to allow an item being tapped to be communicated to the activity
      */
     public interface OnFragmentInteractionListener {
 
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        /**
+         * Called whenever the current folders information has been retrieved
+         *
+         * @param folder    the folder that the information has been retreived for
+         */
+        void onFolderLoaded(BoxFolder folder);
+
+        /**
+         * Called whenever an item in the RecyclerView is tapped
+         *
+         * @param item  the item that was tapped
+         * @return  whether the tap event should continue to be handled by the fragment
+         */
+        boolean handleOnItemClick(BoxItem item);
     }
 
 

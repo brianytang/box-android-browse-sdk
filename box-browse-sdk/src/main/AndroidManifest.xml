@@ -3,7 +3,12 @@
     package="com.box.androidsdk.browse" >
     <application>
         <activity
-            android:name=".activities.BoxBrowseActivity"
+            android:name=".activities.BoxBrowseFileActivity"
+            android:label="@string/title_activity_box_browse"
+            android:theme="@style/BrowseTheme" >
+        </activity>
+        <activity
+            android:name=".activities.BoxBrowseFolderActivity"
             android:label="@string/title_activity_box_browse"
             android:theme="@style/BrowseTheme" >
         </activity>

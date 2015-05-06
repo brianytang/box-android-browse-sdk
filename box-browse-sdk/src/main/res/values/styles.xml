@@ -20,4 +20,9 @@
         <item name="android:layout_height">wrap_content</item>
     </style>
 
+    <style name="BoxDialogButton" parent="@style/TextAppearance.AppCompat.Button">
+        <item name="android:textColor">@color/box_accent</item>
+        <item name="android:background">@null</item>
+    </style>
+
 </resources>

@@ -13,6 +13,7 @@ import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
 import com.box.androidsdk.browse.fragments.BoxBrowseFragment;
 import com.box.androidsdk.content.models.BoxFolder;
+import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxResponse;
 import com.box.androidsdk.content.utils.SdkUtils;
@@ -21,7 +22,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements BoxBrowseFragment.OnFragmentInteractionListener {
+public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements BoxBrowseFragment.OnFragmentInteractionListener {
 
     /**
      * Extra intent parameter that adds a user id to the intent
@@ -30,20 +31,20 @@ public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements 
 
     public static final String TAG = BoxBrowseActivity.class.getName();
 
+    protected BoxFolder mCurrentFolder = null;
+
     private static final ConcurrentLinkedQueue<BoxResponse> RESPONSE_QUEUE = new ConcurrentLinkedQueue<BoxResponse>();
     private static ThreadPoolExecutor mApiExecutor;
 
-
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.box_browsesdk_activity_browse);
-        initToolbar();
         if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.box_browsesdk_fragment_container, BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId()))
-                    .commit();
+            mCurrentFolder = (BoxFolder) mItem;
+            initViews();
         }
     }
+
+    protected abstract void initViews();
 
     @Override
     public ThreadPoolExecutor getApiExecutor(Application application) {
@@ -77,37 +78,17 @@ public class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements 
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
         return super.onOptionsItemSelected(item);
     }
 
-
-    /**
-     * Create an intent to launch an instance of this activity to browse folders.
-     *
-     * @param context current context.
-     * @param folder  folder to browse
-     * @param session a session, should be already authenticated.
-     * @return an intent to launch an instance of this activity.
-     */
-    public static Intent getLaunchIntent(Context context, final BoxFolder folder, final BoxSession session) {
-        if (folder == null || SdkUtils.isBlank(folder.getId()))
-            throw new IllegalArgumentException("A valid folder must be provided to browse");
-        if (session == null || session.getUser() == null || SdkUtils.isBlank(session.getUser().getId()))
-            throw new IllegalArgumentException("A valid user must be provided to browse");
-
-        Intent intent = new Intent(context, BoxBrowseActivity.class);
-        intent.putExtra(EXTRA_ITEM, folder);
-        intent.putExtra(EXTRA_USER_ID, session.getUser().getId());
-        return intent;
+    @Override
+    public boolean handleOnItemClick(BoxItem item) {
+        if (item instanceof BoxFolder) {
+            mCurrentFolder = (BoxFolder) item;
+        }
+        return true;
     }
 
     @Override
-    public void onFragmentInteraction(Uri uri) {
-        Log.e(TAG, "onFragmentInteraction " + uri.toString());
-    }
+    public void onFolderLoaded(BoxFolder folder) { }
 }

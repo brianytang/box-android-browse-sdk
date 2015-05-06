@@ -11,4 +11,5 @@
 
     <string name="title_activity_box_browse">Browse</string>
     <string name="action_settings">Settings</string>
+    <string name="box_browsesdk_select_folder">SELECT THIS FOLDER</string>
 </resources>

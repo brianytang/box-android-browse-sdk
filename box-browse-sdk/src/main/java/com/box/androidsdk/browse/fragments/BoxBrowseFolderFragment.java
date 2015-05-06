@@ -2,15 +2,11 @@ package com.box.androidsdk.browse.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTransaction;
 
-import com.box.androidsdk.browse.R;
 import com.box.androidsdk.content.BoxApiFolder;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
-import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFolder;
@@ -129,24 +125,5 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
                 return intent;
             }
         });
-    }
-
-    @Override
-    protected void onItemTapped(BoxItem item) {
-        FragmentActivity activity = getActivity();
-        if (activity == null) {
-            return;
-        }
-
-        if (item instanceof BoxFolder) {
-            BoxFolder folder = (BoxFolder) item;
-            FragmentTransaction trans = activity.getSupportFragmentManager().beginTransaction();
-            BoxBrowseFragment browseFragment = newInstance(folder, mSession);
-            trans.replace(R.id.box_browsesdk_fragment_container, browseFragment)
-                    .addToBackStack(TAG)
-                    .commit();
-        } else {
-
-        }
     }
 }
