@@ -36,17 +36,17 @@ public class BoxBrowseFolderActivity extends BoxBrowseActivity implements View.O
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-    }
-
-    @Override
-    protected void initViews() {
         setContentView(R.layout.box_browsesdk_activity_folder);
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.box_browsesdk_fragment_container, BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId()))
-                .commit();
-        initToolbar();
+        if (mBrowseFragment == null) {
+            mBrowseFragment = BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId());
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.box_browsesdk_fragment_container, mBrowseFragment)
+                    .commit();
+        }
         mSelectFolderButton = (Button) findViewById(R.id.box_browsesdk_select_folder_button);
         mSelectFolderButton.setOnClickListener(this);
+
+        initToolbar();
     }
 
     @Override

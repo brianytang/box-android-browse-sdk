@@ -23,23 +23,28 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
      */
     public static final String EXTRA_USER_ID = "extraUserId";
 
-    public static final String TAG = BoxBrowseActivity.class.getName();
+    protected static final String TAG = BoxBrowseActivity.class.getName();
+    private static final String OUT_BROWSE_FRAGMENT = "outBrowseFragment";
 
     protected BoxFolder mCurrentFolder = null;
+    protected BoxBrowseFragment mBrowseFragment = null;
 
     private static final ConcurrentLinkedQueue<BoxResponse> RESPONSE_QUEUE = new ConcurrentLinkedQueue<BoxResponse>();
     private static ThreadPoolExecutor mApiExecutor;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (savedInstanceState == null) {
-            mCurrentFolder = (BoxFolder) mItem;
+        mCurrentFolder = (BoxFolder) mItem;
+        if (savedInstanceState != null) {
+            mBrowseFragment = (BoxBrowseFragment) getSupportFragmentManager().getFragment(savedInstanceState, OUT_BROWSE_FRAGMENT);
         }
-
-        initViews();
     }
 
-    protected abstract void initViews();
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        getSupportFragmentManager().putFragment(outState, OUT_BROWSE_FRAGMENT, mBrowseFragment);
+    }
 
     @Override
     public ThreadPoolExecutor getApiExecutor(Application application) {

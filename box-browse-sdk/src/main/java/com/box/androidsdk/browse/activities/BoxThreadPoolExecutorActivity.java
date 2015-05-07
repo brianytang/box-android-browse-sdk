@@ -323,7 +323,6 @@ public abstract class BoxThreadPoolExecutorActivity extends ActionBarActivity {
     protected void initToolbar() {
         Toolbar actionBar = (Toolbar) findViewById(R.id.box_action_bar);
         setSupportActionBar(actionBar);
-        actionBar.setTitle(getTitle());
         actionBar.setNavigationIcon(R.drawable.ic_box_browsesdk_arrow_back_grey_24dp);
         actionBar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override

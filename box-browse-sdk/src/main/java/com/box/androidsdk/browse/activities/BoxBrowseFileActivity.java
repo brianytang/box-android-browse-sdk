@@ -3,6 +3,7 @@ package com.box.androidsdk.browse.activities;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.view.Menu;
 
 import com.box.androidsdk.browse.R;
@@ -20,10 +21,14 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
     public static final String EXTRA_BOX_FILE = "extraBoxFile";
 
     @Override
-    protected void initViews() {
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.box_browsesdk_activity_file);
+        if (mBrowseFragment == null) {
+            mBrowseFragment = BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId());
+        }
         getSupportFragmentManager().beginTransaction()
-                .add(R.id.box_browsesdk_fragment_container, BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId()))
+                .add(R.id.box_browsesdk_fragment_container, mBrowseFragment)
                 .commit();
         initToolbar();
     }

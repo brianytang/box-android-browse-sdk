@@ -78,16 +78,20 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     protected static final String EXTRA_FOLDER = "BoxBrowseFragment_Folder";
     protected static final String EXTRA_COLLECTION = "BoxBrowseFragment_Collection";
 
+    private static final String OUT_ITEM = "outItem";
+
     protected String mFolderId;
     protected String mUserId;
     protected String mFolderName;
     protected BoxSession mSession;
-    protected OnFragmentInteractionListener mListener;
+    protected BoxFolder mFolder = null;
 
+    protected OnFragmentInteractionListener mListener;
     protected BoxItemAdapter mAdapter;
     protected RecyclerView mItemsView;
     protected ThumbnailManager mThumbnailManager;
     protected SwipeRefreshLayout mSwipeRefresh;
+    protected Toolbar mToolbar;
 
     protected LocalBroadcastManager mLocalBroadcastManager;
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
@@ -147,10 +151,14 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             if (SdkUtils.isBlank(mFolderName) && mFolderId.equals(BoxConstants.ROOT_FOLDER_ID)) {
                 mFolderName = getString(R.string.box_browsesdk_all_files);
             }
-
             if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
                 Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
                 // TODO: Call error handler
+            }
+
+            mToolbar = (Toolbar) getActivity().findViewById(R.id.box_action_bar);
+            if (mToolbar != null) {
+                mToolbar.setTitle(mFolderName);
             }
 
             mThumbnailManager = initializeThumbnailManager();
@@ -170,48 +178,53 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             return new ThumbnailManager(getActivity().getCacheDir());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-            // TODO: should finish fragment
+            // TODO: Call error handler
             return null;
         }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
+        mSwipeRefresh = (SwipeRefreshLayout) rootView.findViewById(R.id.box_browsesdk_swipe_reresh);
+        mSwipeRefresh.setOnRefreshListener(this);
+        mSwipeRefresh.setColorSchemeColors(R.color.box_accent);
+        // This is a work around to show the loading circle because SwipeRefreshLayout.onMeasure must be called before setRefreshing to show the animation
+        mSwipeRefresh.setProgressViewOffset(false, 0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getResources().getDisplayMetrics()));
+
+        mItemsView = (RecyclerView) rootView.findViewById(R.id.box_browsesdk_items_recycler_view);
+        mItemsView.addItemDecoration(new BoxItemDividerDecoration(getResources()));
+        mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mAdapter = new BoxItemAdapter();
+        mItemsView.setAdapter(mAdapter);
+        if (savedInstanceState == null || savedInstanceState.getSerializable(OUT_ITEM) == null) {
+            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
+        }
+        return rootView;
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         if (savedInstanceState != null) {
-
+            mFolder = (BoxFolder) savedInstanceState.getSerializable(OUT_ITEM);
+            if (mFolder != null && mFolder.getItemCollection() != null) {
+                mAdapter.addAll(mFolder.getItemCollection());
+                mAdapter.notifyDataSetChanged();
+                if (mToolbar != null) {
+                    mToolbar.setTitle(mFolder.getName());
+                }
+            }
         }
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
+        outState.putSerializable(OUT_ITEM, mFolder);
         super.onSaveInstanceState(outState);
-
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        Toolbar actionBar = (Toolbar) getActivity().findViewById(R.id.box_action_bar);
-        if (actionBar != null) {
-            actionBar.setTitle(mFolderName);
-        }
-
-        View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
-        mSwipeRefresh = (SwipeRefreshLayout) rootView.findViewById(R.id.box_browsesdk_swipe_reresh);
-        mSwipeRefresh.setOnRefreshListener(this);
-        mSwipeRefresh.setColorSchemeColors(R.color.box_accent);
-        mItemsView = (RecyclerView) rootView.findViewById(R.id.box_browsesdk_items_recycler_view);
-        mItemsView.addItemDecoration(new BoxItemDividerDecoration(getResources()));
-        mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        mAdapter = new BoxItemAdapter();
-        mItemsView.setAdapter(mAdapter);
-
-        // This is a work around to show the loading circle because SwipeRefreshLayout.onMeasure must be called before setRefreshing to show the animation
-        mSwipeRefresh.setProgressViewOffset(false, 0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getResources().getDisplayMetrics()));
-        mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
-        return rootView;
-    }
 
     @Override
     public void onAttach(Activity activity) {
@@ -246,12 +259,11 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             return;
         }
 
-        BoxFolder folder = null;
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-            folder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
-            if (folder != null && folder.getItemCollection() != null && mAdapter != null) {
+            mFolder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
+            if (mFolder != null && mFolder.getItemCollection() != null && mAdapter != null) {
                 mAdapter.removeAll();
-                mAdapter.addAll(folder.getItemCollection());
+                mAdapter.addAll(mFolder.getItemCollection());
                 activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -260,9 +272,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
                 });
 
 
-                int offset = folder.getItemCollection().offset().intValue() - 1;
-                int limit = folder.getItemCollection().limit().intValue() - 1;
-                if (offset + limit < folder.getItemCollection().fullSize()) {
+                int offset = mFolder.getItemCollection().offset().intValue() - 1;
+                int limit = mFolder.getItemCollection().limit().intValue() - 1;
+                if (offset + limit < mFolder.getItemCollection().fullSize()) {
                     // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
                     mAdapter.add(new BoxListItem(fetchItems(mFolderId, offset + limit, 1000),
                             ACTION_FETCHED_ITEMS));
@@ -271,7 +283,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
 
         if (mListener != null) {
-            mListener.onFolderLoaded(folder);
+            mListener.onFolderLoaded(mFolder);
         }
 
         mSwipeRefresh.setRefreshing(false);
@@ -290,6 +302,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         mAdapter.remove(intent.getAction());
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
             BoxListItems items = (BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION);
+            mFolder.getItemCollection().addAll(items);
             mAdapter.addAll(items);
             activity.runOnUiThread(new Runnable() {
                 @Override
@@ -315,7 +328,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
      * @param intent
      */
     protected void onDownloadedThumbnail(final Intent intent) {
-        if (intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+        if (intent.getBooleanExtra(EXTRA_SUCCESS, false) && mAdapter != null) {
             mAdapter.update(intent.getStringExtra(EXTRA_FILE_ID));
         }
     }
