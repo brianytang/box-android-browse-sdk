@@ -47,8 +47,8 @@ public abstract class BoxThreadPoolExecutorActivity extends ActionBarActivity {
 
     protected static final int DEFAULT_TIMEOUT = 30 * 1000;
     private static final int  DEFAULT_SPINNER_DELAY = 500;
-    protected static final String ACTION_STARTING_TASK  = "com.box.androidsdk.share.starting_task";
-    protected static final String ACTION_ENDING_TASK  = "com.box.androidsdk.share.ending_task";
+    protected static final String ACTION_STARTING_TASK = "com.box.androidsdk.share.starting_task";
+    protected static final String ACTION_ENDING_TASK = "com.box.androidsdk.share.ending_task";
 
     private ProgressDialog mDialog;
     private LastRunnableHandler mDialogHandler;

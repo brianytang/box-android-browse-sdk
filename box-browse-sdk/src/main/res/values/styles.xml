@@ -5,6 +5,9 @@
         <item name="colorAccent">@color/box_accent</item>
     </style>
 
+    <style name="BoxDialogTitle" parent="@style/TextAppearance.AppCompat.Title">
+    </style>
+
     <style name="BoxLabelText" parent="@android:style/Widget.TextView">
         <item name="android:textAppearance">@style/TextAppearance.AppCompat.Subhead</item>
         <item name="android:textColor">@color/box_primary_text</item>

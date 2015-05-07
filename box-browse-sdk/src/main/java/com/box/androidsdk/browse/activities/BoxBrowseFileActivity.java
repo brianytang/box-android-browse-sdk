@@ -3,6 +3,7 @@ package com.box.androidsdk.browse.activities;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.view.Menu;
 
 import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
@@ -21,10 +22,10 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
     @Override
     protected void initViews() {
         setContentView(R.layout.box_browsesdk_activity_file);
-        initToolbar();
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.box_browsesdk_fragment_container, BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId()))
                 .commit();
+        initToolbar();
     }
 
     @Override
@@ -39,6 +40,13 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
         return true;
     }
 
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.box_browsesdk_menu_file, menu);
+        return true;
+    }
 
     /**
      * Create an intent to launch an instance of this activity to browse folders.

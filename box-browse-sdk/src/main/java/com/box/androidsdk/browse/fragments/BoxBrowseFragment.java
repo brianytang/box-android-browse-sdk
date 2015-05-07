@@ -13,10 +13,12 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,7 +59,7 @@ import java.util.concurrent.TimeUnit;
  * {@link BoxBrowseFragment.OnFragmentInteractionListener} interface
  * to handle interaction events.
  */
-public abstract class BoxBrowseFragment extends Fragment {
+public abstract class BoxBrowseFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener {
 
     public static final String ARG_ID = "argId";
     public static final String ARG_USER_ID = "argUserId";
@@ -85,13 +87,14 @@ public abstract class BoxBrowseFragment extends Fragment {
     protected BoxItemAdapter mAdapter;
     protected RecyclerView mItemsView;
     protected ThumbnailManager mThumbnailManager;
+    protected SwipeRefreshLayout mSwipeRefresh;
 
     protected LocalBroadcastManager mLocalBroadcastManager;
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
-                onFolderInfoFetched(intent);
+                onInfoFetched(intent);
             } else if (intent.getAction().equals(ACTION_FETCHED_ITEMS)) {
                 onItemsFetched(intent);
             } else if (intent.getAction().equals(ACTION_DOWNLOADED_FILE_THUMBNAIL)) {
@@ -173,8 +176,17 @@ public abstract class BoxBrowseFragment extends Fragment {
     }
 
     @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        if (savedInstanceState != null) {
+
+        }
+    }
+
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+
     }
 
     @Override
@@ -186,13 +198,18 @@ public abstract class BoxBrowseFragment extends Fragment {
         }
 
         View rootView = inflater.inflate(R.layout.box_browsesdk_fragment_browse, container, false);
-        mItemsView = (RecyclerView) rootView.findViewById(R.id.items_recycler_view);
+        mSwipeRefresh = (SwipeRefreshLayout) rootView.findViewById(R.id.box_browsesdk_swipe_reresh);
+        mSwipeRefresh.setOnRefreshListener(this);
+        mSwipeRefresh.setColorSchemeColors(R.color.box_accent);
+        mItemsView = (RecyclerView) rootView.findViewById(R.id.box_browsesdk_items_recycler_view);
         mItemsView.addItemDecoration(new BoxItemDividerDecoration(getResources()));
         mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mAdapter = new BoxItemAdapter();
         mItemsView.setAdapter(mAdapter);
+
+        // This is a work around to show the loading circle because SwipeRefreshLayout.onMeasure must be called before setRefreshing to show the animation
+        mSwipeRefresh.setProgressViewOffset(false, 0, (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getResources().getDisplayMetrics()));
         mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
-        mAdapter.notifyDataSetChanged();
         return rootView;
     }
 
@@ -202,9 +219,14 @@ public abstract class BoxBrowseFragment extends Fragment {
         try {
             mListener = (OnFragmentInteractionListener) activity;
         } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString()
-                    + " must implement OnFragmentInteractionListener");
+            throw new ClassCastException(activity.toString() + " must implement OnFragmentInteractionListener");
         }
+    }
+
+    @Override
+    public void onRefresh() {
+        mSwipeRefresh.setRefreshing(true);
+        getApiExecutor().execute(fetchInfo());
     }
 
     @Override
@@ -213,21 +235,22 @@ public abstract class BoxBrowseFragment extends Fragment {
         mListener = null;
     }
 
-    private void onFolderInfoFetched(Intent intent) {
+    private void onInfoFetched(Intent intent) {
         FragmentActivity activity = getActivity();
-        if (activity == null) {
+        if (activity == null || mAdapter == null) {
             return;
         }
+
         if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
-            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+            Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
         BoxFolder folder = null;
-        mAdapter.remove(intent.getAction());
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
             folder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
-            if (folder != null && folder.getItemCollection() != null) {
+            if (folder != null && folder.getItemCollection() != null && mAdapter != null) {
+                mAdapter.removeAll();
                 mAdapter.addAll(folder.getItemCollection());
                 activity.runOnUiThread(new Runnable() {
                     @Override
@@ -250,6 +273,8 @@ public abstract class BoxBrowseFragment extends Fragment {
         if (mListener != null) {
             mListener.onFolderLoaded(folder);
         }
+
+        mSwipeRefresh.setRefreshing(false);
     }
 
     protected void onItemsFetched(Intent intent) {
@@ -258,7 +283,7 @@ public abstract class BoxBrowseFragment extends Fragment {
             return;
         }
         if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
-            Toast.makeText(getActivity(), getResources().getString(R.string.boxsdk_Problem_fetching_folder), Toast.LENGTH_LONG).show();
+            Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -283,6 +308,7 @@ public abstract class BoxBrowseFragment extends Fragment {
             }
         }
     }
+
     /**
      * Handles showing new thumbnails after they have been downloaded.
      *
@@ -498,6 +524,11 @@ public abstract class BoxBrowseFragment extends Fragment {
             return mListItems.size();
         }
 
+        public synchronized void removeAll() {
+            mItemsMap.clear();
+            mListItems.clear();
+        }
+
         public void remove(BoxListItem listItem) {
             remove(listItem.getIdentifier());
         }
@@ -541,19 +572,18 @@ public abstract class BoxBrowseFragment extends Fragment {
         /**
          * Called whenever the current folders information has been retrieved
          *
-         * @param folder    the folder that the information has been retreived for
+         * @param folder the folder that the information has been retreived for
          */
         void onFolderLoaded(BoxFolder folder);
 
         /**
          * Called whenever an item in the RecyclerView is tapped
          *
-         * @param item  the item that was tapped
-         * @return  whether the tap event should continue to be handled by the fragment
+         * @param item the item that was tapped
+         * @return whether the tap event should continue to be handled by the fragment
          */
         boolean handleOnItemClick(BoxItem item);
     }
-
 
     /**
      * Fetch a Box folder.

@@ -56,7 +56,7 @@ public class SampleBrowseActivity extends ActionBarActivity {
                     BoxFile boxFile = (BoxFile) data.getSerializableExtra(BoxBrowseFileActivity.EXTRA_BOX_FILE);
                     Toast.makeText(this, String.format("File picked, id: %s; name: %s", boxFile.getId(), boxFile.getName()), Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(this, "Ooops! Fail in BoxBrowseFileActivity!", Toast.LENGTH_LONG).show();
+                    // No file selected
                 }
                 break;
             case REQUEST_CODE_FOLDER_PICKER:
@@ -64,7 +64,7 @@ public class SampleBrowseActivity extends ActionBarActivity {
                     BoxFolder boxFolder = (BoxFolder) data.getSerializableExtra(BoxBrowseFolderActivity.EXTRA_BOX_FOLDER);
                     Toast.makeText(this, String.format("Folder picked, id: %s; name: %s", boxFolder.getId(), boxFolder.getName()), Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(this, "Ooops! Fail in BoxBrowseFolderActivity!", Toast.LENGTH_LONG).show();
+                    // No folder selected
                 }
                 break;
             default:
