@@ -17,4 +17,6 @@
     <string name="box_browsesdk_dialog_cancel">Cancel</string>
 
     <string name="box_browsesdk_create_folder_conflict">A folder with that name has already been created.</string>
+    <string name="box_browsesdk_error_retrieving_items">Error retrieving items</string>
+    <string name="box_browsesdk_tap_to_retry">Tap to retry</string>
 </resources>

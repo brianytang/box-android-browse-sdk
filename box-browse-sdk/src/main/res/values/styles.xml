@@ -24,8 +24,12 @@
     </style>
 
     <style name="BoxDialogButton" parent="@style/TextAppearance.AppCompat.Button">
-        <item name="android:textColor">@color/box_accent</item>
-        <item name="android:background">@null</item>
+        <item name="android:textColor">@color/box_browsesdk_button_flat_selector</item>
+        <item name="android:background">@drawable/box_browsesdk_button_flat_selector</item>
+    </style>
+
+    <style name="BoxListItem">
+        <item name="android:background">@drawable/boxsdk_list_item_selector</item>
     </style>
 
 </resources>

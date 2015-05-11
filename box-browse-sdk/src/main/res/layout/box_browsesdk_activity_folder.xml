@@ -27,7 +27,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@drawable/box_browsesdk_item_divider" />
+                android:background="?android:attr/listDivider" />
             <Button
                 android:id="@+id/box_browsesdk_select_folder_button"
                 style="@style/BoxDialogButton"

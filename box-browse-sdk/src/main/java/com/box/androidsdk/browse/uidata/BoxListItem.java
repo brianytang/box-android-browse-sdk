@@ -13,17 +13,16 @@ import java.util.concurrent.FutureTask;
  * This class will contain an item or a task that will be displayed in a list.
  */
 public final class BoxListItem {
-
     public static final int TYPE_BOX_FOLDER_ITEM = 0;
     public static final int TYPE_BOX_FILE_ITEM = 1;
     public static final int TYPE_FUTURE_TASK = 2;
 
-    public static final int TOTAL_FILE_TYPES = 3;
 
     private BoxItem mBoxItem;
     private FutureTask<Intent> mTask;
     private int mType;
     private String mIdentifier;
+    private boolean mIsError = false;
 
     /**
      * Constructor.
@@ -62,6 +61,31 @@ public final class BoxListItem {
     public void setTask(FutureTask<Intent> task) {
         mTask = task;
 
+    }
+
+    /**
+     * Sets the type for the item
+     */
+    public void setType(int type) {
+        mType = type;
+    }
+
+    /**
+     * Sets whether or not this list item represents an error
+     *
+     * @param isError
+     */
+    public void setIsError(boolean isError) {
+        mIsError = isError;
+    }
+
+    /**
+     * Gets whether or not this list item represents an error
+     *
+     * @return whether or not this item is an error state
+     */
+    public boolean getIsError() {
+        return mIsError;
     }
 
     /**

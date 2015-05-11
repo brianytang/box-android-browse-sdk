@@ -74,6 +74,7 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
 
     @Override
     public void onFolderLoaded(BoxFolder folder) {
+        mCurrentFolder = folder;
     }
 
 

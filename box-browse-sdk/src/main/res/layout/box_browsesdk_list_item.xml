@@ -4,7 +4,7 @@
     android:id="@+id/boxItemMain"
     android:layout_width="fill_parent"
     android:layout_height="@dimen/box_browsesdk_list_item_height"
-    android:background="@drawable/boxsdk_list_item_selector"
+    style="@style/BoxListItem"
     android:orientation="horizontal"
     android:filterTouchesWhenObscured="true">
     <FrameLayout
