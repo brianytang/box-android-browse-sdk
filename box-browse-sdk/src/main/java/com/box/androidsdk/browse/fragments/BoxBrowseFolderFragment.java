@@ -1,12 +1,21 @@
 package com.box.androidsdk.browse.fragments;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Toast;
 
+import com.box.androidsdk.browse.R;
+import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.content.BoxApiFolder;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
+import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFolder;
@@ -20,6 +29,12 @@ import java.util.concurrent.FutureTask;
  * create an instance of this fragment.
  */
 public class BoxBrowseFolderFragment extends BoxBrowseFragment {
+
+    protected BoxFolder mFolder = null;
+    private static final String OUT_ITEM = "outItem";
+
+    protected String mFolderId;
+    protected String mFolderName;
 
     /**
      * Use this factory method to create a new instance of the Browse fragment
@@ -43,6 +58,24 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
      */
     public static BoxBrowseFolderFragment newInstance(String folderId, String userId) {
         return newInstance(folderId, userId, null);
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            mFolderId = getArguments().getString(ARG_ID);
+            mFolderName = getArguments().getString(ARG_NAME);
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = super.onCreateView(inflater, container, savedInstanceState);
+        if (savedInstanceState == null || savedInstanceState.getSerializable(OUT_ITEM) == null) {
+            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
+        }
+        return view;
     }
 
     /**
@@ -81,6 +114,7 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
                     if (bf != null) {
                         intent.putExtra(EXTRA_SUCCESS, true);
                         intent.putExtra(EXTRA_FOLDER, bf);
+                        intent.putExtra(EXTRA_COLLECTION, bf.getItemCollection());
                     }
 
                 } catch (BoxException e) {
@@ -95,8 +129,7 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         });
     }
 
-    @Override
-    public FutureTask<Intent> fetchItems(final String folderId, final int offset, final int limit) {
+    public FutureTask<Intent> fetchItems(final int offset, final int limit) {
         return new FutureTask<Intent>(new Callable<Intent>() {
 
             @Override
@@ -105,14 +138,14 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
                 intent.setAction(ACTION_FETCHED_ITEMS);
                 intent.putExtra(EXTRA_OFFSET, offset);
                 intent.putExtra(EXTRA_LIMIT, limit);
-                intent.putExtra(EXTRA_ID, folderId);
+                intent.putExtra(EXTRA_ID, mFolderId);
                 try {
 
                     // this call the collection is just BoxObjectItems and each does not appear to be an instance of BoxItem.
                     ArrayList<String> itemFields = new ArrayList<String>();
                     String[] fields = new String[]{BoxFile.FIELD_NAME, BoxFile.FIELD_SIZE, BoxFile.FIELD_OWNED_BY, BoxFolder.FIELD_HAS_COLLABORATIONS, BoxFolder.FIELD_IS_EXTERNALLY_OWNED};
                     BoxApiFolder api = new BoxApiFolder(mSession);
-                    BoxListItems items = api.getItemsRequest(folderId).setLimit(limit).setOffset(offset).setFields(fields).send();
+                    BoxListItems items = api.getItemsRequest(mFolderId).setLimit(limit).setOffset(offset).setFields(fields).send();
                     intent.putExtra(EXTRA_SUCCESS, true);
                     intent.putExtra(EXTRA_COLLECTION, items);
                 } catch (BoxException e) {
@@ -126,4 +159,94 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
             }
         });
     }
+
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        if (savedInstanceState != null) {
+            mFolder = (BoxFolder) savedInstanceState.getSerializable(OUT_ITEM);
+            if (mFolder != null && mFolder.getItemCollection() != null) {
+                mAdapter.addAll(mFolder.getItemCollection());
+                mAdapter.notifyDataSetChanged();
+                if (mToolbar != null) {
+                    mToolbar.setTitle(mFolder.getName());
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putSerializable(OUT_ITEM, mFolder);
+        super.onSaveInstanceState(outState);
+    }
+
+
+    protected void onItemsFetched(Intent intent) {
+        FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+            Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        mAdapter.remove(intent.getAction());
+        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
+            super.onItemsFetched(intent);
+
+        }
+    }
+
+    protected void onInfoFetched(Intent intent) {
+        FragmentActivity activity = getActivity();
+        if (activity == null || mAdapter == null) {
+            return;
+        }
+
+        if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
+            Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
+            mFolder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
+            if (mFolder != null && mFolder.getItemCollection() != null && mAdapter != null) {
+               displayBoxList(mFolder.getItemCollection());
+            }
+        }
+
+        if (mListener instanceof OnFragmentInteractionListener) {
+            ((OnFragmentInteractionListener)mListener).onFolderLoaded(mFolder);
+        }
+
+        mSwipeRefresh.setRefreshing(false);
+    }
+
+
+    /**
+     * This interface must be implemented by activities that contain this
+     * fragment to allow an item being tapped to be communicated to the activity
+     */
+    public interface OnFragmentInteractionListener extends BoxBrowseFragment.OnFragmentInteractionListener{
+
+        /**
+         * Called whenever the current folders information has been retrieved
+         *
+         * @param folder the folder that the information has been retreived for
+         */
+        void onFolderLoaded(BoxFolder folder);
+
+
+        /**
+         * Called whenever an item in the RecyclerView is tapped
+         *
+         * @param item the item that was tapped
+         * @return whether the tap event should continue to be handled by the fragment
+         */
+        boolean handleOnItemClick(BoxItem item);
+    }
+
 }

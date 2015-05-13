@@ -8,6 +8,7 @@ import android.view.Menu;
 
 import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
+import com.box.androidsdk.browse.fragments.BoxSearchFragment;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
@@ -25,11 +26,15 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.box_browsesdk_activity_file);
         if (mBrowseFragment == null) {
-            mBrowseFragment = BoxBrowseFolderFragment.newInstance(mItem.getId(), mSession.getUserId());
+            mBrowseFragment = BoxSearchFragment.newInstance(mSession, "test");
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.box_browsesdk_fragment_container, mBrowseFragment)
+                    .commit();
         }
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.box_browsesdk_fragment_container, mBrowseFragment)
-                .commit();
+        if (getSupportFragmentManager().getBackStackEntryCount() <1) {
+            System.out.println("add fragemtn "  + getSupportFragmentManager().getBackStackEntryCount());
+
+        }
         initToolbar();
     }
 

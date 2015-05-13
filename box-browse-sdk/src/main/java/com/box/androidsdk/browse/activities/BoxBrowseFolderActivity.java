@@ -14,8 +14,10 @@ import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
 import com.box.androidsdk.browse.fragments.BoxBrowseFragment;
 import com.box.androidsdk.browse.fragments.BoxCreateFolderFragment;
+import com.box.androidsdk.content.BoxApiFile;
 import com.box.androidsdk.content.BoxApiFolder;
 import com.box.androidsdk.content.BoxException;
+import com.box.androidsdk.content.models.BoxDownload;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFolder;
@@ -23,6 +25,8 @@ import com.box.androidsdk.content.requests.BoxResponse;
 import com.box.androidsdk.content.utils.SdkUtils;
 
 import org.apache.http.HttpStatus;
+
+import java.io.File;
 
 public class BoxBrowseFolderActivity extends BoxBrowseActivity implements View.OnClickListener, BoxCreateFolderFragment.OnCreateFolderListener {
 
@@ -45,9 +49,11 @@ public class BoxBrowseFolderActivity extends BoxBrowseActivity implements View.O
         }
         mSelectFolderButton = (Button) findViewById(R.id.box_browsesdk_select_folder_button);
         mSelectFolderButton.setOnClickListener(this);
-
+        System.out.println("folder numFragments " + getSupportFragmentManager().getBackStackEntryCount());
         initToolbar();
+
     }
+
 
     @Override
     public void onFolderLoaded(BoxFolder folder) {

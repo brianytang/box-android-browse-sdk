@@ -37,6 +37,7 @@ import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
+import com.box.androidsdk.content.models.BoxList;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFile;
@@ -67,6 +68,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     public static final String ARG_NAME = "argName";
 
     protected static final String TAG = BoxBrowseFragment.class.getName();
+    protected static final int DEFAULT_LIMIT = 1000;
 
     protected static final String ACTION_FETCHED_ITEMS = "BoxBrowseFragment_FetchedItems";
     protected static final String ACTION_FETCHED_INFO = "BoxBrowseFragment_FetchedInfo";
@@ -79,12 +81,14 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     protected static final String EXTRA_FOLDER = "BoxBrowseFragment_Folder";
     protected static final String EXTRA_COLLECTION = "BoxBrowseFragment_Collection";
 
-    private static final String OUT_ITEM = "outItem";
 
-    protected String mFolderId;
+
+
     protected String mUserId;
     protected BoxSession mSession;
-    protected BoxFolder mFolder = null;
+
+    protected BoxListItems mBoxListItems;
+
 
     protected OnFragmentInteractionListener mListener;
     protected BoxItemAdapter mAdapter;
@@ -154,7 +158,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         return mThumbnailExecutor;
     }
 
-    private IntentFilter initializeIntentFilters() {
+    protected IntentFilter initializeIntentFilters() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_FETCHED_INFO);
         filter.addAction(ACTION_FETCHED_ITEMS);
@@ -170,6 +174,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
+
             mFolderId = getArguments().getString(ARG_ID);
             mUserId = getArguments().getString(ARG_USER_ID);
             String folderName = getArguments().getString(ARG_NAME);
@@ -189,9 +194,22 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             IntentFilter filters = initializeIntentFilters();
             mLocalBroadcastManager.registerReceiver(mBroadcastReceiver, filters);
 
+            mUserId = getArguments().getString(ARG_USER_ID);
             mSession = new BoxSession(getActivity(), mUserId);
-
         }
+
+        if (savedInstanceState != null){
+            mBoxListItems = (BoxListItems)savedInstanceState.getSerializable(EXTRA_COLLECTION);
+        }
+        if (mBoxListItems == null){
+            mBoxListItems = new BoxListItems();
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putSerializable(EXTRA_COLLECTION, mBoxListItems);
+        super.onSaveInstanceState(outState);
     }
 
     private ThumbnailManager initializeThumbnailManager() {
@@ -228,38 +246,8 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mAdapter = new BoxItemAdapter();
         mItemsView.setAdapter(mAdapter);
-
-        if (mFolder != null) {
-            // Handles backstack navigation
-            addItemsForFolder(mFolder);
-        } else if (savedInstanceState != null && savedInstanceState.getSerializable(OUT_ITEM) != null) {
-            // Handles rotation and activity recreation
-            mFolder = (BoxFolder) savedInstanceState.getSerializable(OUT_ITEM);
-            addItemsForFolder(mFolder);
-        } else {
-            // Otherwise make network request for info
-            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
-        }
         return rootView;
     }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        if (savedInstanceState != null) {
-            mFolder = (BoxFolder) savedInstanceState.getSerializable(OUT_ITEM);
-            if (mFolder != null && mFolder.getItemCollection() != null) {
-                addItemsForFolder(mFolder);
-            }
-        }
-    }
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        outState.putSerializable(OUT_ITEM, mFolder);
-        super.onSaveInstanceState(outState);
-    }
-
 
     @Override
     public void onAttach(Activity activity) {
@@ -283,74 +271,58 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         mListener = null;
     }
 
-    private void onInfoFetched(Intent intent) {
-        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-            mFolder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
-            if (mFolder != null && mFolder.getItemCollection() != null && mAdapter != null) {
-                mAdapter.removeAll();
-                addItemsForFolder(mFolder);
-            }
+    protected abstract void onInfoFetched(Intent intent);
+
+    /**
+     * Fetch the first information relevant to this fragment or what should be used for refreshing.
+     *
+     * @return A FutureTask that is tasked with fetching the first information relevant to this fragment or what should be used for refreshing.
+     */
+    public abstract FutureTask<Intent> fetchInfo();
+
+    /**
+     * Handle showing a collection in the given intent.
+     * @param intent an intent that contains a collection in EXTRA_COLLECTION.
+     */
+    protected void onItemsFetched(Intent intent){
+        if (intent.getBooleanExtra(EXTRA_SUCCESS, true)) {
+            mAdapter.remove(ACTION_FETCHED_ITEMS);
         }
+        displayBoxList((BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION));
+
     }
 
-    private void addItemsForFolder(BoxFolder folder) {
-        FragmentActivity activity = getActivity();
-        if (activity == null || mAdapter == null) {
-            return;
-        }
-
-        mAdapter.addAll(folder.getItemCollection());
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mAdapter.notifyDataSetChanged();
-                setToolbar(mFolder.getName());
-            }
-        });
-
-
-        int offset = folder.getItemCollection().offset().intValue() - 1;
-        int limit = folder.getItemCollection().limit().intValue() - 1;
-        if (offset + limit < folder.getItemCollection().fullSize()) {
-            // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
-            mAdapter.add(new BoxListItem(fetchItems(folder.getId(), offset + limit, 1000),
-                    ACTION_FETCHED_ITEMS));
-        }
-
-        if (mListener != null) {
-            mListener.onFolderLoaded(folder);
-        }
-    }
-
-    protected void onItemsFetched(Intent intent) {
+    /**
+     * show in this fragment a box list of items.
+     */
+    protected void displayBoxList(final BoxListItems items){
         FragmentActivity activity = getActivity();
         if (activity == null) {
             return;
         }
-
         mAdapter.remove(intent.getAction());
-        if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-            BoxListItems items = (BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION);
-            mFolder.getItemCollection().addAll(items);
-            mAdapter.addAll(items);
-            activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mAdapter.notifyDataSetChanged();
-                }
-            });
-
-
-            int offset = intent.getIntExtra(EXTRA_OFFSET, -1);
-            int limit = intent.getIntExtra(EXTRA_LIMIT, -1);
-            if (offset + limit < items.fullSize()) {
-                // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
-                mAdapter.add(new BoxListItem(fetchItems(mFolderId, offset + limit, 1000),
-                        ACTION_FETCHED_ITEMS));
+        mBoxListItems.addAll(items);
+        mAdapter.addAll(items);
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mAdapter.notifyDataSetChanged();
             }
+        });
+
+        int limit = DEFAULT_LIMIT;
+        if (items.limit() != null && items.limit() > 0) {
+            limit = items.limit().intValue();
         }
+        if (items.size() < items.fullSize()) {
+            // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
+            mAdapter.add(new BoxListItem(fetchItems(items.size(), limit),
+                    ACTION_FETCHED_ITEMS));
+        }
+
     }
 
+    protected abstract FutureTask<Intent> fetchItems(final int offset, final int limit);
 
     /**
      * Handles showing new thumbnails after they have been downloaded.
@@ -390,7 +362,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
-    private class BoxItemHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    protected class BoxItemHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
         BoxListItem mItem;
         ImageView mThumbView;
@@ -518,14 +490,24 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
+    /**
+     * Create a view holder that is compatible with BoxBrowseFragment.
+     * @param viewGroup viewGroup passed back by BoxItemAdatper.
+     * @param i the position.
+     * @return a new BoxItemHolder designed to hold onto views as well as set data into that view.
+     */
+    protected BoxItemHolder createBoxViewHolder(final ViewGroup viewGroup, int i){
+        View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
+        return new BoxItemHolder(view);
+    }
+
     protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemHolder> {
         protected ArrayList<BoxListItem> mListItems = new ArrayList<BoxListItem>();
         protected HashMap<String, BoxListItem> mItemsMap = new HashMap<String, BoxListItem>();
 
         @Override
         public BoxItemHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
-            return new BoxItemHolder(view);
+            return createBoxViewHolder(viewGroup, i);
         }
 
         @Override
@@ -605,8 +587,10 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
         public synchronized void remove(String key) {
             BoxListItem item = mItemsMap.remove(key);
+            System.out.println("BoxBrowseFragment remove " + key + " item " + item);
             if (item != null) {
-                mListItems.remove(item);
+                boolean success = mListItems.remove(item);
+                System.out.println("BoxBrowseFragment " + success);
             }
         }
 
@@ -614,6 +598,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             for (BoxItem item : items) {
                 if (!mItemsMap.containsKey(item.getId())) {
                     add(new BoxListItem(item, item.getId()));
+                } else {
+                    // update an existing item if it exists.
+                    mItemsMap.get(item.getId()).setBoxItem(item);
                 }
             }
         }
@@ -638,14 +625,6 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
      * fragment to allow an item being tapped to be communicated to the activity
      */
     public interface OnFragmentInteractionListener {
-
-        /**
-         * Called whenever the current folders information has been retrieved
-         *
-         * @param folder the folder that the information has been retreived for
-         */
-        void onFolderLoaded(BoxFolder folder);
-
         /**
          * Called whenever an item in the RecyclerView is tapped
          *
@@ -655,20 +634,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         boolean handleOnItemClick(BoxItem item);
     }
 
-    /**
-     * Fetch a Box folder.
-     *
-     * @return A FutureTask that is tasked with fetching information on the given folder.
-     */
-    public abstract FutureTask<Intent> fetchInfo();
 
-    /**
-     * Fetch items from folder using given offset and limit.
-     *
-     * @param folderId Folder id to be fetched.
-     * @return A FutureTask that is tasked with fetching information on the given folder.
-     */
-    public abstract FutureTask<Intent> fetchItems(final String folderId, final int offset, final int limit);
 
     /**
      * Download the thumbnail for a given file.

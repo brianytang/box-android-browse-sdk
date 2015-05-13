@@ -7,6 +7,7 @@ import android.support.v4.app.FragmentManager;
 import android.view.MenuItem;
 
 import com.box.androidsdk.browse.R;
+import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
 import com.box.androidsdk.browse.fragments.BoxBrowseFragment;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
@@ -16,7 +17,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
-public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements BoxBrowseFragment.OnFragmentInteractionListener {
+public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity implements BoxBrowseFolderFragment.OnFragmentInteractionListener {
 
     /**
      * Extra intent parameter that adds a user id to the intent
