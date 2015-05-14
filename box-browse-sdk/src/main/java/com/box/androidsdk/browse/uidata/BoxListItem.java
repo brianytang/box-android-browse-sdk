@@ -103,8 +103,16 @@ public final class BoxListItem {
      */
     public BoxItem getBoxItem() {
         return mBoxItem;
-
     }
+
+    /**
+     *
+     * @param boxItem set the given box item into this list item.
+     */
+    public void setBoxItem(final BoxItem boxItem) {
+        mBoxItem = boxItem;
+    }
+
 
     /**
      * 

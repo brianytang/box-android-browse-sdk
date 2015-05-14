@@ -10,10 +10,14 @@ import android.widget.Toast;
 
 import com.box.androidsdk.browse.activities.BoxBrowseFileActivity;
 import com.box.androidsdk.browse.activities.BoxBrowseFolderActivity;
+import com.box.androidsdk.content.BoxApiFile;
 import com.box.androidsdk.content.BoxConfig;
+import com.box.androidsdk.content.models.BoxDownload;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
+
+import java.io.File;
 
 
 public class SampleBrowseActivity extends ActionBarActivity {
@@ -30,7 +34,7 @@ public class SampleBrowseActivity extends ActionBarActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sample_browse);
-        BoxConfig.IS_LOG_ENABLED = true;
+        BoxConfig.IS_LOG_ENABLED = false;
         BoxConfig.CLIENT_ID = "m9bcgls0kffgyclmt9hz0jbs9ua7m0yy";
         BoxConfig.CLIENT_SECRET = "mojjTtvkNvh4T2B2mNYkOtfkd0uo6zod";
         initUI();
@@ -46,7 +50,6 @@ public class SampleBrowseActivity extends ActionBarActivity {
     private void launchFolderPicker() {
         startActivityForResult(BoxBrowseFolderActivity.getLaunchIntent(this, BoxFolder.createFromId("0"), session), REQUEST_CODE_FOLDER_PICKER);
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
