@@ -18,7 +18,7 @@ import android.widget.CursorAdapter;
 import android.widget.FilterQueryProvider;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.ResourceCursorAdapter;
+import android.support.v4.widget.ResourceCursorAdapter;
 import android.widget.TextView;
 
 import com.box.androidsdk.browse.R;
@@ -230,15 +230,15 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
 
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-//        View v = LayoutInflater.from(context).inflate(R.layout.boxsdk_box_list_item, parent, false);
-//        ViewHolder vh = new ViewHolder();
-//        vh.icon = (ImageView)v.findViewById(R.id.icon);
-//        vh.name = (TextView)v.findViewById(R.id.name);
-//        vh.description = (TextView)v.findViewById(R.id.metaline_description);
-//        vh.progressBar = (ProgressBar)v.findViewById(R.id.spinner);
-//        v.setTag(vh);
+        View v = LayoutInflater.from(context).inflate(R.layout.box_browsesdk_list_item, parent, false);
+        ViewHolder vh = new ViewHolder();
+        vh.icon = (ImageView)v.findViewById(R.id.box_browsesdk_thumb_image);
+        vh.name = (TextView)v.findViewById(R.id.box_browsesdk_name_text);
+        vh.description = (TextView)v.findViewById(R.id.metaline_description);
+        vh.progressBar = (ProgressBar)v.findViewById(R.id.spinner);
+        v.setTag(vh);
 
-        return null;
+        return v;
     }
 
     private static class ViewHolder {
@@ -359,7 +359,7 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         BoxSearchCursor(final BoxListItems boxList, final String query){
             super(SEARCH_COLUMN_NAMES);
             mBoxList = boxList;
-            addRow(new Object[]{"-1", 1, query,""});
+            addRow(new Object[]{"-1", 1, query,"", TYPE_QUERY});
 
             initializeFromList(boxList);
 

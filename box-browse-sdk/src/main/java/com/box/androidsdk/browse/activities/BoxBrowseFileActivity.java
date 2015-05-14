@@ -4,11 +4,13 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.view.MenuItemCompat;
 import android.view.Menu;
 
 import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.fragments.BoxBrowseFolderFragment;
 import com.box.androidsdk.browse.fragments.BoxSearchFragment;
+import com.box.androidsdk.browse.uidata.BoxSearchView;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
@@ -55,6 +57,9 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.box_browsesdk_menu_file, menu);
+        BoxSearchView searchView = (BoxSearchView) MenuItemCompat.getActionView(menu.findItem(R.id.box_browsesdk_action_search));
+        searchView.setSession(mSession);
+
         return true;
     }
 

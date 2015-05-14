@@ -48,6 +48,7 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
@@ -103,23 +104,6 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             if (intent.getAction().equals(ACTION_DOWNLOADED_FILE_THUMBNAIL)) {
                 onDownloadedThumbnail(intent);
             } else {
-                if (!intent.getBooleanExtra(EXTRA_SUCCESS, false) && mAdapter != null) {
-                    // Update list item to error state and recreate task so it can be retried
-                    BoxListItem item = mAdapter.get(intent.getAction());
-                    if (item != null) {
-                        item.setIsError(true);
-                        if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
-                            item.setTask(fetchInfo());
-                        } else if (intent.getAction().equals(ACTION_FETCHED_ITEMS)) {
-                            int limit = intent.getIntExtra(EXTRA_LIMIT, 1000);
-                            int offset = intent.getIntExtra(EXTRA_OFFSET, 0);
-                            item.setTask(fetchItems(mFolder.getId(), offset, limit));
-                        }
-                        mAdapter.update(intent.getAction());
-                    }
-                    return;
-                }
-
                 // Handle response
                 if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
                     onInfoFetched(intent);
@@ -173,20 +157,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        System.out.println( "DEFAULT_LIMIT " + DEFAULT_LIMIT);
         if (getArguments() != null) {
-
-            mFolderId = getArguments().getString(ARG_ID);
             mUserId = getArguments().getString(ARG_USER_ID);
-            String folderName = getArguments().getString(ARG_NAME);
-            if (SdkUtils.isBlank(folderName) && mFolderId.equals(BoxConstants.ROOT_FOLDER_ID)) {
-                folderName = getString(R.string.box_browsesdk_all_files);
-            }
-            if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
-                Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
-                // TODO: Call error handler
-            }
-
-            setToolbar(folderName);
             mThumbnailManager = initializeThumbnailManager();
 
             // Initialize broadcast managers
@@ -200,8 +173,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
         if (savedInstanceState != null){
             mBoxListItems = (BoxListItems)savedInstanceState.getSerializable(EXTRA_COLLECTION);
-        }
-        if (mBoxListItems == null){
+        } else {
             mBoxListItems = new BoxListItems();
         }
     }
@@ -222,7 +194,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
-    private void setToolbar(String name) {
+    protected void setToolbar(String name) {
         if (getActivity() != null && getActivity() instanceof ActionBarActivity) {
             ActionBar toolbar = ((ActionBarActivity) getActivity()).getSupportActionBar();
             if (toolbar != null) {
@@ -271,7 +243,12 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         mListener = null;
     }
 
-    protected abstract void onInfoFetched(Intent intent);
+    protected void onInfoFetched(Intent intent){
+        if (intent.getBooleanExtra(EXTRA_SUCCESS, true)) {
+            mBoxListItems = new BoxListItems();
+        }
+        onItemsFetched(intent);
+    }
 
     /**
      * Fetch the first information relevant to this fragment or what should be used for refreshing.
@@ -286,10 +263,24 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
      */
     protected void onItemsFetched(Intent intent){
         if (intent.getBooleanExtra(EXTRA_SUCCESS, true)) {
-            mAdapter.remove(ACTION_FETCHED_ITEMS);
+            mAdapter.remove(intent.getAction());
+        } else {
+            BoxListItem item = mAdapter.get(intent.getAction());
+            if (item != null) {
+                item.setIsError(true);
+                if (intent.getAction().equals(ACTION_FETCHED_INFO)) {
+                    item.setTask(fetchInfo());
+                } else if (intent.getAction().equals(ACTION_FETCHED_ITEMS)) {
+                    int limit = intent.getIntExtra(EXTRA_LIMIT, DEFAULT_LIMIT);
+                    int offset = intent.getIntExtra(EXTRA_OFFSET, 0);
+                    item.setTask(fetchItems(offset, limit));
+                }
+                mAdapter.update(intent.getAction());
+            }
+            return;
         }
         displayBoxList((BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION));
-
+        mSwipeRefresh.setRefreshing(false);
     }
 
     /**
@@ -300,7 +291,6 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         if (activity == null) {
             return;
         }
-        mAdapter.remove(intent.getAction());
         mBoxListItems.addAll(items);
         mAdapter.addAll(items);
         activity.runOnUiThread(new Runnable() {
@@ -314,9 +304,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         if (items.limit() != null && items.limit() > 0) {
             limit = items.limit().intValue();
         }
-        if (items.size() < items.fullSize()) {
+        if (mBoxListItems.size() < items.fullSize()) {
             // if not all entries were fetched add a task to fetch more items if user scrolls to last entry.
-            mAdapter.add(new BoxListItem(fetchItems(items.size(), limit),
+            mAdapter.add(new BoxListItem(fetchItems(mBoxListItems.size(), limit),
                     ACTION_FETCHED_ITEMS));
         }
 
@@ -689,4 +679,14 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             }
         });
     }
+
+    public static void logIntent(final Intent intent) {
+        Iterator<String> iterator = intent.getExtras().keySet().iterator();
+        while (iterator.hasNext()) {
+            String key = iterator.next();
+            System.out.println("extra: " + key + " => " + String.valueOf(intent.getExtras().get(key)));
+        }
+
+    }
+
 }

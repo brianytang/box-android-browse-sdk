@@ -12,6 +12,7 @@ import android.os.Parcelable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -19,7 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
-import android.widget.SearchView;
+
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,11 +64,19 @@ public class BoxSearchView extends SearchView{
 
    public BoxSearchView(final Context context){
        super(context);
+       initSearchView(context);
    }
+
+
 
     public BoxSearchView(final Context context, final AttributeSet attrs){
         super(context, attrs);
+        initSearchView(context);
+    }
+
+    private void initSearchView(final Context context){
         setSuggestionsAdapter(new BoxSearchListAdapter(context, R.layout.abc_list_menu_item_layout, 0, mSession));
+
         if (mSession == null){
             // this widget cannot be used until a session has been set into it.
             this.setEnabled(false);
@@ -75,14 +84,11 @@ public class BoxSearchView extends SearchView{
         this.setOnSuggestionListener(new OnSuggestionListener() {
             @Override
             public boolean onSuggestionSelect(int position) {
-                System.out.println("onSuccestionSelect " + position);
                 return false;
             }
 
             @Override
             public boolean onSuggestionClick(int position) {
-                System.out.println("onSuggestionClick " + position);
-
                 return false;
             }
         });
@@ -97,8 +103,6 @@ public class BoxSearchView extends SearchView{
                 return false;
             }
         });
-
-
     }
 
 
@@ -108,6 +112,8 @@ public class BoxSearchView extends SearchView{
         mSearchApi = new BoxApiSearch(mSession);
         if (mSession != null){
             this.setEnabled(true);
+            System.out.println("setSession getSuggestionsAdapter " + getSuggestionsAdapter());
+            if (getSuggestionsAdapter() != null)
             getSuggestionsAdapter().setFilterQueryProvider(new BoxSearchListAdapter.SearchFilterQueryProvider(mSession));
         }
     }

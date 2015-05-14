@@ -12,6 +12,7 @@ import android.widget.Toast;
 import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.content.BoxApiFolder;
+import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
@@ -19,6 +20,7 @@ import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFolder;
+import com.box.androidsdk.content.utils.SdkUtils;
 
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
@@ -66,6 +68,16 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         if (getArguments() != null) {
             mFolderId = getArguments().getString(ARG_ID);
             mFolderName = getArguments().getString(ARG_NAME);
+
+            String folderName = getArguments().getString(ARG_NAME);
+            if (SdkUtils.isBlank(folderName) && mFolderId.equals(BoxConstants.ROOT_FOLDER_ID)) {
+                folderName = getString(R.string.box_browsesdk_all_files);
+            }
+            if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
+                Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
+                // TODO: Call error handler
+            }
+            setToolbar(folderName);
         }
     }
 
@@ -169,9 +181,6 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
             if (mFolder != null && mFolder.getItemCollection() != null) {
                 mAdapter.addAll(mFolder.getItemCollection());
                 mAdapter.notifyDataSetChanged();
-                if (mToolbar != null) {
-                    mToolbar.setTitle(mFolder.getName());
-                }
             }
         }
     }
@@ -205,6 +214,7 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         if (activity == null || mAdapter == null) {
             return;
         }
+        logIntent(intent);
 
         if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
             Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
@@ -212,10 +222,7 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         }
 
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-            mFolder = (BoxFolder) intent.getSerializableExtra(EXTRA_FOLDER);
-            if (mFolder != null && mFolder.getItemCollection() != null && mAdapter != null) {
-               displayBoxList(mFolder.getItemCollection());
-            }
+          super.onInfoFetched(intent);
         }
 
         if (mListener instanceof OnFragmentInteractionListener) {

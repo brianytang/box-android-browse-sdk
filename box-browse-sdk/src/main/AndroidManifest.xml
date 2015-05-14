@@ -6,6 +6,14 @@
             android:name=".activities.BoxBrowseFileActivity"
             android:label="@string/box_browsesdk_title"
             android:theme="@style/BrowseTheme" >
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
         </activity>
         <activity
             android:name=".activities.BoxBrowseFolderActivity"

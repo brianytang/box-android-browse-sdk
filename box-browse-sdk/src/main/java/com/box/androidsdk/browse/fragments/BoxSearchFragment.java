@@ -12,6 +12,7 @@ import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.adapters.BoxSearchListAdapter;
 import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.content.BoxApiSearch;
+import com.box.androidsdk.content.BoxConfig;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
@@ -34,20 +35,19 @@ import java.util.concurrent.FutureTask;
  */
 public class BoxSearchFragment extends BoxBrowseFragment {
 
-    protected BoxFolder mFolder = null;
-    protected final static String EXTRA_SEARCH_REQUEST = "BoxSearchFragment_SEARCH_REQUEST";
+
     private static final String OUT_ITEM = "outItem";
     BoxSearchHolder mSearchRequestHolder;
     protected BoxApiSearch mApiSearch;
-    public static final int DEFAULT_SEARCH_LIMIT = 30;
-
+    protected static final int DEFAULT_SEARCH_LIMIT = 30;
 
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null && getArguments().getSerializable(OUT_ITEM) instanceof BoxSearchHolder) {
-            mSearchRequestHolder =(BoxSearchHolder) getArguments().getSerializable(OUT_ITEM);
+            mSearchRequestHolder = (BoxSearchHolder) getArguments().getSerializable(OUT_ITEM);
+            setToolbar(mSearchRequestHolder.getQuery());
         }
         mApiSearch = new BoxApiSearch(mSession);
     }
@@ -128,14 +128,19 @@ public class BoxSearchFragment extends BoxBrowseFragment {
                 intent.putExtra(EXTRA_OFFSET, offset);
                 intent.putExtra(EXTRA_LIMIT, limit);
                 try {
+                    BoxRequestsSearch.Search search = mSearchRequestHolder.createSearchRequest(mApiSearch).setOffset(offset).setLimit(limit);
+                    BoxConfig.IS_DEBUG = true;
+                    BoxConfig.IS_LOG_ENABLED = true;
+                    int limitUsed = limit;
+                    // according to the https://box-content.readme.io/#searching-for-content  offset must be a multiple of limit for simplicity we use the offset itself.
+                    if (offset % limit != 0 && offset != 0){
+                        limitUsed = offset;
+                    }
 
-                    BoxListItems items = mSearchRequestHolder.createSearchRequest(mApiSearch).setOffset(offset).setLimit(limit).send();
-                    System.out.println("offset " + offset + " limit " + limit + " items " + items.limit());
+                    BoxListItems items = mSearchRequestHolder.createSearchRequest(mApiSearch).setOffset(offset).setLimit(limitUsed).send();
                     intent.putExtra(EXTRA_SUCCESS, true);
                     intent.putExtra(EXTRA_COLLECTION, items);
                 } catch (BoxException e) {
-                    e.printStackTrace();
-                    e.getCause().printStackTrace();
                     intent.putExtra(EXTRA_SUCCESS, false);
                 } finally {
                     mLocalBroadcastManager.sendBroadcast(intent);
@@ -146,31 +151,14 @@ public class BoxSearchFragment extends BoxBrowseFragment {
         });
     }
 
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        if (savedInstanceState != null) {
-            mFolder = (BoxFolder) savedInstanceState.getSerializable(OUT_ITEM);
-            if (mFolder != null && mFolder.getItemCollection() != null) {
-                mAdapter.addAll(mFolder.getItemCollection());
-                mAdapter.notifyDataSetChanged();
-                if (mToolbar != null) {
-                    mToolbar.setTitle(mFolder.getName());
-                }
-            }
-        }
-    }
-
     @Override
     public void onSaveInstanceState(Bundle outState) {
-        outState.putSerializable(OUT_ITEM, mFolder);
+        outState.putSerializable(OUT_ITEM, mSearchRequestHolder);
         super.onSaveInstanceState(outState);
     }
 
 
     protected void onItemsFetched(Intent intent) {
-        logIntent(intent);
         FragmentActivity activity = getActivity();
         if (activity == null) {
             return;
@@ -180,7 +168,7 @@ public class BoxSearchFragment extends BoxBrowseFragment {
             return;
         }
         super.onItemsFetched(intent);
-  }
+    }
 
     protected void onInfoFetched(Intent intent) {
         FragmentActivity activity = getActivity();
@@ -192,40 +180,28 @@ public class BoxSearchFragment extends BoxBrowseFragment {
             Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_performing_search), Toast.LENGTH_LONG).show();
             return;
         }
-        if (intent.getSerializableExtra(EXTRA_COLLECTION) != null) {
-            mAdapter.removeAll();
-            displayBoxList((BoxListItems) intent.getSerializableExtra(EXTRA_COLLECTION));
-        }
-
-        mSwipeRefresh.setRefreshing(false);
+        super.onInfoFetched(intent);
     }
 
-    protected BoxItemHolder createBoxViewHolder(final ViewGroup viewGroup, int i){
+    protected BoxItemHolder createBoxViewHolder(final ViewGroup viewGroup, int i) {
         View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
-        return new BoxItemHolder(view){
+        return new BoxItemHolder(view) {
             @Override
-            public void bindItem(BoxItem item) {
-                mItem = item;
-                mNameView.setText(item.getName());
-                mMetaDescription.setText(BoxSearchListAdapter.createPath(item, File.separator));
-                mThumbnailManager.setThumbnailIntoView(mThumbView, item);
-                mProgressBar.setVisibility(View.GONE);
-                mMetaDescription.setVisibility(View.VISIBLE);
-                mThumbView.setVisibility(View.VISIBLE);
+            public void bindItem(BoxListItem item) {
+                if (item.getBoxItem() != null) {
+                    mItem = item;
+                    mNameView.setText(item.getBoxItem().getName());
+                    mMetaDescription.setText(BoxSearchListAdapter.createPath(item.getBoxItem(), File.separator));
+                    mThumbnailManager.setThumbnailIntoView(mThumbView, item.getBoxItem());
+                    mProgressBar.setVisibility(View.GONE);
+                    mMetaDescription.setVisibility(View.VISIBLE);
+                    mThumbView.setVisibility(View.VISIBLE);
+                } else {
+                    super.bindItem(item);
+                }
             }
         };
     }
-
-
-    private void logIntent(final Intent intent) {
-        Iterator<String> iterator = intent.getExtras().keySet().iterator();
-        while (iterator.hasNext()) {
-            String key = iterator.next();
-            System.out.println("extra: " + key + " => " + String.valueOf(intent.getExtras().get(key)));
-        }
-
-    }
-
 
     /**
      * Helper class to hold onto the parameters held by given search request. This class is not meant
@@ -234,6 +210,7 @@ public class BoxSearchFragment extends BoxBrowseFragment {
     protected static class BoxSearchHolder extends BoxRequestsSearch.Search implements Serializable {
         /**
          * Construct a search holder.
+         *
          * @param searchRequest the search request used to populate this holder.
          */
         public BoxSearchHolder(BoxRequestsSearch.Search searchRequest) {
@@ -243,12 +220,13 @@ public class BoxSearchFragment extends BoxBrowseFragment {
 
         /**
          * Create a new search request from the given search holder object.
+         *
          * @param searchApi the search api that should be used for this request.
          * @return a new search based off the parameters of this holder.
          */
-        public BoxRequestsSearch.Search createSearchRequest(final BoxApiSearch searchApi){
+        public BoxRequestsSearch.Search createSearchRequest(final BoxApiSearch searchApi) {
             BoxRequestsSearch.Search search = searchApi.getSearchRequest(this.getQuery());
-            for (Map.Entry<String,String> entry :mQueryMap.entrySet()){
+            for (Map.Entry<String, String> entry : mQueryMap.entrySet()) {
                 search.limitValueForKey(entry.getKey(), entry.getValue());
             }
             return search;
