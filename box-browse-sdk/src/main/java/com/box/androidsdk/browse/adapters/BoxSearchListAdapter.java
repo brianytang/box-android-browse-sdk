@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +37,7 @@ import com.box.androidsdk.content.models.BoxJsonObject;
 import com.box.androidsdk.content.models.BoxList;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
+import com.box.androidsdk.content.requests.BoxRequestsFile;
 import com.box.androidsdk.content.requests.BoxRequestsSearch;
 import com.box.androidsdk.content.requests.BoxResponse;
 import com.box.androidsdk.content.utils.SdkUtils;
@@ -63,6 +65,8 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
     private static ThreadPoolExecutor mApiExecutor;
     private Handler mHandler;
     private ThumbnailManager mThumbnailManager;
+    private OnBoxSearchListener mOnBoxSearchListener;
+    public static int DEFAULT_MAX_SUGGESTIONS = 9;
 
     public BoxSearchListAdapter(Context context, int layout, int flags, final BoxSession session){
         super(context, layout, new BoxSearchCursor(null, ""), flags);
@@ -70,10 +74,8 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         try {
             mThumbnailManager = new ThumbnailManager(context.getCacheDir());
         } catch (Exception e){
-            e.printStackTrace();
+
         }
-
-
     }
 
     @Override
@@ -94,6 +96,10 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         return super.runQueryOnBackgroundThread(constraint);
     }
 
+
+    public void setOnBoxSearchListener(final OnBoxSearchListener searchListener){
+        mOnBoxSearchListener = searchListener;
+    }
 
     private Handler getUiHandler(){
         return mHandler;
@@ -171,7 +177,16 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
                             || !holder.boxItem.getId().equals(fileId)) {
                         return intent;
                     }
-                    BoxDownload download = fileApi.getDownloadThumbnailRequest(downloadLocation, fileId).send();
+                    DisplayMetrics metrics = holder.icon.getResources().getDisplayMetrics();
+                    int thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_128;
+                    if (metrics.density <= DisplayMetrics.DENSITY_MEDIUM) {
+                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_64;
+                    } else if (metrics.density <= DisplayMetrics.DENSITY_HIGH) {
+                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_64;
+                    }
+                    BoxDownload download = fileApi.getDownloadThumbnailRequest(downloadLocation, fileId)
+                            .setMinHeight(thumbSize)
+                            .setMinWidth(thumbSize).send();
                     if (downloadLocation.exists()) {
                         if (holder.boxItem == null || !(holder.boxItem instanceof BoxFile)
                                 || !holder.boxItem.getId().equals(fileId)) {
@@ -182,7 +197,7 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
                         }
                     }
                 } catch (BoxException e) {
-                    e.printStackTrace();
+
                 }
 
                 return intent;
@@ -204,7 +219,14 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         ViewHolder holder = (ViewHolder)view.getTag();
             if (holder != null){
                 holder.name.setText(((BoxSearchCursor)cursor).getName());
-                if (!((BoxSearchCursor)cursor).isSearchTerm()) {
+                try{
+                    if (((BoxSearchCursor)cursor).getType() == BoxSearchCursor.TYPE_NORMAL)
+                        ((BoxSearchCursor) cursor).getBoxItem();
+                } catch (Exception e){
+                    if (((BoxSearchCursor)cursor).getType() == BoxSearchCursor.TYPE_NORMAL)
+                    return;
+                }
+                if (((BoxSearchCursor)cursor).getType() == BoxSearchCursor.TYPE_NORMAL) {
                     holder.description.setText(((BoxSearchCursor) cursor).getPath());
                     BoxItem item = ((BoxSearchCursor) cursor).getBoxItem();
                     holder.boxItem = item;
@@ -214,16 +236,32 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
                             getThumbnailApiExecutor().execute(downloadThumbnail(getFileApi(),item.getId(),mThumbnailManager.getThumbnailForFile(item.getId()), holder));
                         }
                     }
-                } else {
+                    holder.progressBar.setVisibility(View.INVISIBLE);
+                    holder.icon.setVisibility(View.VISIBLE);
+                } else  if (((BoxSearchCursor)cursor).getType() == BoxSearchCursor.TYPE_QUERY) {
                     holder.boxItem = null;
-                    holder.description.setText("performing search");
+                    holder.description.setText(R.string.box_browsesdk_performing_search);
                     holder.icon.setImageResource(R.drawable.ic_box_browsesdk_search_grey_24dp);
+                    holder.progressBar.setVisibility(View.VISIBLE);
+                    holder.icon.setVisibility(View.INVISIBLE);
+                } else if (((BoxSearchCursor)cursor).getType() == BoxSearchCursor.TYPE_ADDITIONAL_RESULT){
+                    holder.boxItem = null;
+                    holder.name.setText(R.string.box_browsesdk_see_additional_results);
+                    holder.description.setText("");
+                    holder.progressBar.setVisibility(View.INVISIBLE);
+                    holder.icon.setVisibility(View.INVISIBLE);
                 }
-
-                int visibility = ((BoxSearchCursor)cursor).isSearchTerm() ? View.VISIBLE : View.INVISIBLE;
-                holder.progressBar.setVisibility(visibility);
-
             }
+    }
+
+    public void setSession(final BoxSession session){
+        if (session == null){
+            setFilterQueryProvider(null);
+        } else {
+            setFilterQueryProvider(new SearchFilterQueryProvider(session));
+        }
+
+
     }
 
 
@@ -253,23 +291,12 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
 
     @Override
     public View newDropDownView(Context context, Cursor cursor, ViewGroup parent) {
-        System.out.println("newDropDownView ");
-//        View v = LayoutInflater.from(context).inflate(R.layout.boxsdk_navigation_dropdown_item_folder, parent, false);
-//        if (v == null) {
-//            return null;
-//        }
-//
-//        TextView tv = (TextView) v.findViewById(R.id.textView_navigationItem);
-//
-//        tv.setText(cursor.getString(0));
-        TextView view = new TextView(context);
-        view.setBackgroundColor(Color.GREEN);
-
-        return view;
+        // not used.
+        return null;
     }
 
 
-    public static class SearchFilterQueryProvider implements FilterQueryProvider {
+    private class SearchFilterQueryProvider implements FilterQueryProvider {
         private final BoxApiSearch mSearchApi;
         private final BoxApiFile mFileApi;
 
@@ -292,20 +319,32 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
                 return null;
             }
             BoxRequestsSearch.Search search = mSearchApi.getSearchRequest(constraint.toString());
+            search = onSearchRequested(search);
             try {
-                return new BoxSearchCursor(search.send());
+
+                if (search != null) {
+                    System.out.println(search.getQuery());
+                    return new BoxSearchCursor(search.send());
+                }
             } catch (BoxException e){
-                e.printStackTrace();
+              //  e.printStackTrace();
             }
             return new BoxSearchCursor(null, "failed: " + constraint);
         }
 
     }
 
+    public BoxRequestsSearch.Search onSearchRequested(BoxRequestsSearch.Search searchRequest){
+        if (mOnBoxSearchListener != null){
+            return mOnBoxSearchListener.onSearchRequested(searchRequest);
+        }
+        return searchRequest;
+    }
+
     /**
      * Used to listen to particular events related to this adapter.
      */
-    public static interface BoxSearchListener {
+    public static interface OnBoxSearchListener {
 
         /**
          * This is called before any search calls are sent. Allows modification of search request
@@ -315,18 +354,7 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
          */
         public BoxRequestsSearch.Search onSearchRequested(BoxRequestsSearch.Search searchRequest);
 
-        /**
-         * This is called after a search has been completed.
-         * @param response this is the response of the last search completed. Contains the results of the search or
-         *                 exception encountered.
-         */
-        public void onSearchCompleted(final BoxResponse<BoxListItems> response);
 
-        /**
-         *
-         * @param boxItem The box item in the adapter the user clicked on.
-         */
-        public void onItemSelected(final BoxItem boxItem);
     }
 
 
@@ -347,23 +375,21 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         public static int TYPE_QUERY  = 1;
         public static int TYPE_ADDITIONAL_RESULT = 2;
 
-        private static final String[] SEARCH_COLUMN_NAMES = new String[]{"_id", "search_term", "name", "path", "type"};
+        private static final String[] SEARCH_COLUMN_NAMES = new String[]{"_id", "name", "path", "type"};
         private final BoxListItems mBoxList;
 
         BoxSearchCursor(final BoxListItems boxList){
             super(SEARCH_COLUMN_NAMES, boxList.size());
             mBoxList = boxList;
             initializeFromList(boxList);
+            addRow(new Object[]{-2, "","", TYPE_ADDITIONAL_RESULT});
         }
 
         BoxSearchCursor(final BoxListItems boxList, final String query){
             super(SEARCH_COLUMN_NAMES);
             mBoxList = boxList;
-            addRow(new Object[]{"-1", 1, query,"", TYPE_QUERY});
-
+            addRow(new Object[]{"-1",  query,"", TYPE_QUERY});
             initializeFromList(boxList);
-
-
         }
 
         public BoxItem getBoxItem(){
@@ -374,14 +400,21 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
             if (boxList == null){
                 return;
             }
+            int i = 0;
             for (BoxJsonObject item : boxList){
-                if (item instanceof BoxItem){
-                    addRow(new Object[]{((BoxItem) item).getId(),-1, ((BoxItem) item).getName(), createPath((BoxItem)item, File.separator), TYPE_NORMAL});
+                if (i >= DEFAULT_MAX_SUGGESTIONS){
+                    break;
                 }
+                if (item instanceof BoxItem){
+                    addRow(new Object[]{((BoxItem) item).getId(), ((BoxItem) item).getName(), createPath((BoxItem)item, File.separator), TYPE_NORMAL});
+                }
+                i++;
             }
         }
 
-
+        public int getType(){
+            return this.getInt(getColumnIndex("type"));
+        }
 
         public BoxListItems getBoxList(){
             return mBoxList;
@@ -394,11 +427,6 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
         public String getPath(){
             return this.getString(getColumnIndex("path"));
         }
-
-        public boolean isSearchTerm(){
-            return this.getInt(getColumnIndex("search_term"))> 0;
-        }
-
 
     }
 

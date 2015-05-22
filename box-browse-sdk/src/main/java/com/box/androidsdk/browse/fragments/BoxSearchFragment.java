@@ -52,15 +52,6 @@ public class BoxSearchFragment extends BoxBrowseFragment {
         mApiSearch = new BoxApiSearch(mSession);
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        if (savedInstanceState == null || savedInstanceState.getSerializable(OUT_ITEM) == null) {
-            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
-        }
-        return view;
-    }
-
     /**
      * Use this factory method to create a new instance of the Browse fragment
      * with default configurations
@@ -90,6 +81,14 @@ public class BoxSearchFragment extends BoxBrowseFragment {
         return BoxSearchFragment.newInstance(session, (new BoxApiSearch(session)).getSearchRequest(query));
     }
 
+
+    public void search(BoxRequestsSearch.Search request){
+        mSearchRequestHolder = new BoxSearchHolder(request);
+        setListItem(new BoxListItems());
+        mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
+        mAdapter.notifyDataSetChanged();
+
+    }
 
     @Override
     public FutureTask<Intent> fetchInfo() {
@@ -207,7 +206,7 @@ public class BoxSearchFragment extends BoxBrowseFragment {
      * Helper class to hold onto the parameters held by given search request. This class is not meant
      * to be used beyond storing and retrieving these fields.
      */
-    protected static class BoxSearchHolder extends BoxRequestsSearch.Search implements Serializable {
+    public static class BoxSearchHolder extends BoxRequestsSearch.Search implements Serializable {
         /**
          * Construct a search holder.
          *
@@ -230,6 +229,13 @@ public class BoxSearchFragment extends BoxBrowseFragment {
                 search.limitValueForKey(entry.getKey(), entry.getValue());
             }
             return search;
+        }
+
+        public void displayParams(){
+            System.out.println(getQuery());
+            for (Map.Entry<String, String> entry : mQueryMap.entrySet()) {
+              System.out.println(entry.getKey() + " -> " + entry.getValue());
+            }
         }
 
     }

@@ -16,6 +16,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
@@ -68,7 +69,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     public static final String ARG_USER_ID = "argUserId";
     public static final String ARG_NAME = "argName";
 
-    protected static final String TAG = BoxBrowseFragment.class.getName();
+    public static final String TAG = BoxBrowseFragment.class.getName();
     protected static final int DEFAULT_LIMIT = 1000;
 
     protected static final String ACTION_FETCHED_ITEMS = "BoxBrowseFragment_FetchedItems";
@@ -88,7 +89,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     protected String mUserId;
     protected BoxSession mSession;
 
-    protected BoxListItems mBoxListItems;
+    private BoxListItems mBoxListItems;
 
 
     protected OnFragmentInteractionListener mListener;
@@ -154,28 +155,33 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         // Required empty public constructor
     }
 
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        System.out.println( "DEFAULT_LIMIT " + DEFAULT_LIMIT);
+        // Initialize broadcast managers
+        mLocalBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
         if (getArguments() != null) {
             mUserId = getArguments().getString(ARG_USER_ID);
             mThumbnailManager = initializeThumbnailManager();
-
-            // Initialize broadcast managers
-            mLocalBroadcastManager = LocalBroadcastManager.getInstance(getActivity());
-            IntentFilter filters = initializeIntentFilters();
-            mLocalBroadcastManager.registerReceiver(mBroadcastReceiver, filters);
-
             mUserId = getArguments().getString(ARG_USER_ID);
             mSession = new BoxSession(getActivity(), mUserId);
         }
-
         if (savedInstanceState != null){
-            mBoxListItems = (BoxListItems)savedInstanceState.getSerializable(EXTRA_COLLECTION);
-        } else {
-            mBoxListItems = new BoxListItems();
+            setListItem((BoxListItems)savedInstanceState.getSerializable(EXTRA_COLLECTION));
         }
+    }
+
+    @Override
+    public void onResume() {
+        mLocalBroadcastManager.registerReceiver(mBroadcastReceiver, initializeIntentFilters());
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        mLocalBroadcastManager.unregisterReceiver(mBroadcastReceiver);
+        super.onPause();
     }
 
     @Override
@@ -188,15 +194,14 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         try {
             return new ThumbnailManager(getActivity().getCacheDir());
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
             // TODO: Call error handler
             return null;
         }
     }
 
     protected void setToolbar(String name) {
-        if (getActivity() != null && getActivity() instanceof ActionBarActivity) {
-            ActionBar toolbar = ((ActionBarActivity) getActivity()).getSupportActionBar();
+        if (getActivity() != null && getActivity() instanceof AppCompatActivity) {
+            ActionBar toolbar = ((AppCompatActivity) getActivity()).getSupportActionBar();
             if (toolbar != null) {
                 toolbar.setTitle(name);
             }
@@ -218,8 +223,20 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         mItemsView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mAdapter = new BoxItemAdapter();
         mItemsView.setAdapter(mAdapter);
+
+        if (mBoxListItems == null ) {
+            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
+        } else {
+           displayBoxList(mBoxListItems);
+
+        }
         return rootView;
     }
+
+    protected void setListItem(final BoxListItems items){
+        mBoxListItems = items;
+    }
+
 
     @Override
     public void onAttach(Activity activity) {
@@ -244,9 +261,6 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     }
 
     protected void onInfoFetched(Intent intent){
-        if (intent.getBooleanExtra(EXTRA_SUCCESS, true)) {
-            mBoxListItems = new BoxListItems();
-        }
         onItemsFetched(intent);
     }
 
@@ -291,8 +305,21 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         if (activity == null) {
             return;
         }
-        mBoxListItems.addAll(items);
-        mAdapter.addAll(items);
+        // if we are trying to display the original list no need to add.
+        if (items == mBoxListItems){
+
+          //  mBoxListItems.addAll(items);
+            if (mAdapter.getItemCount() < 1){
+                mAdapter.addAll(items);
+            }
+        } else {
+            if (mBoxListItems == null){
+                setListItem(items);
+            }
+            mBoxListItems.addAll(items);
+            mAdapter.addAll(items);
+        }
+
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -658,7 +685,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
                     DisplayMetrics metrics = getResources().getDisplayMetrics();
                     int thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_128;
                     if (metrics.density <= DisplayMetrics.DENSITY_MEDIUM) {
-                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_32;
+                        thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_64;
                     } else if (metrics.density <= DisplayMetrics.DENSITY_HIGH) {
                         thumbSize = BoxRequestsFile.DownloadThumbnail.SIZE_64;
                     }
