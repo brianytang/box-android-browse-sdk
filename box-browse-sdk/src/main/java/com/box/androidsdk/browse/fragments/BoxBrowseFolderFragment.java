@@ -65,30 +65,40 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null){
+            mFolder = (BoxFolder)savedInstanceState.getSerializable(OUT_ITEM);
+        }
         if (getArguments() != null) {
             mFolderId = getArguments().getString(ARG_ID);
             mFolderName = getArguments().getString(ARG_NAME);
-
-            String folderName = getArguments().getString(ARG_NAME);
-            if (SdkUtils.isBlank(folderName) && mFolderId.equals(BoxConstants.ROOT_FOLDER_ID)) {
-                folderName = getString(R.string.box_browsesdk_all_files);
+            if (mFolder == null){
+                mFolder = BoxFolder.createFromId(mFolderId);
             }
+
             if (SdkUtils.isBlank(mFolderId) || SdkUtils.isBlank(mUserId)) {
                 Toast.makeText(getActivity(), R.string.box_browsesdk_cannot_view_folder, Toast.LENGTH_LONG).show();
                 // TODO: Call error handler
             }
-            setToolbar(folderName);
         }
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        if (savedInstanceState == null || savedInstanceState.getSerializable(OUT_ITEM) == null) {
-            mAdapter.add(new BoxListItem(fetchInfo(), ACTION_FETCHED_INFO));
+    public void onResume() {
+        if (getArguments() != null){
+            String folderName = getArguments().getString(ARG_NAME);
+            setToolbar(folderName);
         }
-        return view;
+        super.onResume();
     }
+
+    /**
+     *
+     * @return the current folder this fragment is meant to display.
+     */
+    public BoxFolder getFolder(){
+        return mFolder;
+    }
+
 
     /**
      * Use this factory method to create a new instance of the Browse fragment
@@ -140,6 +150,8 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
             }
         });
     }
+
+
 
     public FutureTask<Intent> fetchItems(final int offset, final int limit) {
         return new FutureTask<Intent>(new Callable<Intent>() {
@@ -204,8 +216,8 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
 
         mAdapter.remove(intent.getAction());
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
+            mFolder = (BoxFolder)intent.getSerializableExtra(EXTRA_FOLDER);
             super.onItemsFetched(intent);
-
         }
     }
 
@@ -214,7 +226,6 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         if (activity == null || mAdapter == null) {
             return;
         }
-        logIntent(intent);
 
         if (!intent.getBooleanExtra(EXTRA_SUCCESS, false)) {
             Toast.makeText(getActivity(), getResources().getString(R.string.box_browsesdk_problem_fetching_folder), Toast.LENGTH_LONG).show();
@@ -222,30 +233,20 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
         }
 
         if (mFolderId.equals(intent.getStringExtra(EXTRA_ID))) {
-          super.onInfoFetched(intent);
+            mFolder = (BoxFolder)intent.getSerializableExtra(EXTRA_FOLDER);
+            if (mFolder != null && mFolder.getName() != null) {
+                getArguments().putString(ARG_NAME, mFolder.getName());
+                this.setToolbar(mFolder.getName());
+            }
+            super.onInfoFetched(intent);
         }
-
-        if (mListener instanceof OnFragmentInteractionListener) {
-            ((OnFragmentInteractionListener)mListener).onFolderLoaded(mFolder);
-        }
-
-        mSwipeRefresh.setRefreshing(false);
     }
-
 
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an item being tapped to be communicated to the activity
      */
     public interface OnFragmentInteractionListener extends BoxBrowseFragment.OnFragmentInteractionListener{
-
-        /**
-         * Called whenever the current folders information has been retrieved
-         *
-         * @param folder the folder that the information has been retreived for
-         */
-        void onFolderLoaded(BoxFolder folder);
-
 
         /**
          * Called whenever an item in the RecyclerView is tapped
