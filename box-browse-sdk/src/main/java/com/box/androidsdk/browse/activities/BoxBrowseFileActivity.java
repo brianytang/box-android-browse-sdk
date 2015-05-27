@@ -63,7 +63,15 @@ public class BoxBrowseFileActivity extends BoxBrowseActivity implements BoxSearc
             onBoxItemSelected(item);
             return false;
         }
+    }
 
+
+    @Override
+    public void onBoxItemSelected(BoxItem boxItem) {
+        super.onBoxItemSelected(boxItem);
+        if (!(boxItem instanceof BoxFolder)) {
+            handleOnItemClick(boxItem);
+        }
     }
 
     @Override

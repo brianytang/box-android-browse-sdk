@@ -107,8 +107,6 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
         clearSearch();
         if (boxItem instanceof BoxFolder){
             handleBoxFolderClicked((BoxFolder)boxItem);
-        } else {
-            handleOnItemClick(boxItem);
         }
     }
 
