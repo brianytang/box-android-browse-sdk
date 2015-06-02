@@ -1,8 +1,8 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
     <style name="BrowseTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">@color/box_primary</item>
-        <item name="colorPrimaryDark">@color/box_primary_dark</item>
-        <item name="colorAccent">@color/box_accent</item>
+        <item name="colorPrimary">@color/box_browsesdk_primary</item>
+        <item name="colorPrimaryDark">@color/box_browsesdk_primary_dark</item>
+        <item name="colorAccent">@color/box_browsesdk_accent</item>
     </style>
 
     <style name="BoxDialogTitle" parent="@style/TextAppearance.AppCompat.Title">
@@ -10,7 +10,7 @@
 
     <style name="BoxLabelText" parent="@android:style/Widget.TextView">
         <item name="android:textAppearance">@style/TextAppearance.AppCompat.Subhead</item>
-        <item name="android:textColor">@color/box_primary_text</item>
+        <item name="android:textColor">@color/box_browsesdk_primary_text</item>
         <item name="android:layout_gravity">center_vertical</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

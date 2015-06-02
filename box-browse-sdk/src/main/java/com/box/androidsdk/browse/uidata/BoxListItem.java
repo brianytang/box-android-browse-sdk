@@ -23,6 +23,7 @@ public final class BoxListItem {
     private int mType;
     private String mIdentifier;
     private boolean mIsError = false;
+    private boolean mIsEnabled = true;
 
     /**
      * Constructor.
@@ -87,6 +88,26 @@ public final class BoxListItem {
     public boolean getIsError() {
         return mIsError;
     }
+
+
+    /**
+     * Sets whether or not this list item should be enabled.
+     *
+     * @param isEnabled
+     */
+    public void setIsEnabled(boolean isEnabled) {
+        mIsEnabled = isEnabled;
+    }
+
+    /**
+     * Gets whether or not this list item should be enabled
+     *
+     * @return whether or not this item is an error state
+     */
+    public boolean getIsEnabled() {
+        return mIsEnabled;
+    }
+
 
     /**
      * 

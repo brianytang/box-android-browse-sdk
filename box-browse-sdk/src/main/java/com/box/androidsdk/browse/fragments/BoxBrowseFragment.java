@@ -15,7 +15,6 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -27,18 +26,16 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.box.androidsdk.browse.R;
+import com.box.androidsdk.browse.activities.BoxBrowseActivity;
 import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.browse.uidata.ThumbnailManager;
 import com.box.androidsdk.content.BoxApiFile;
-import com.box.androidsdk.content.BoxConstants;
 import com.box.androidsdk.content.BoxException;
 import com.box.androidsdk.content.models.BoxFile;
 import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
-import com.box.androidsdk.content.models.BoxList;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
 import com.box.androidsdk.content.requests.BoxRequestsFile;
@@ -83,16 +80,13 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     protected static final String EXTRA_FOLDER = "BoxBrowseFragment_Folder";
     protected static final String EXTRA_COLLECTION = "BoxBrowseFragment_Collection";
 
-
-
-
     protected String mUserId;
     protected BoxSession mSession;
 
     private BoxListItems mBoxListItems;
 
-
     protected OnFragmentInteractionListener mListener;
+
     protected BoxItemAdapter mAdapter;
     protected RecyclerView mItemsView;
     protected ThumbnailManager mThumbnailManager;
@@ -379,17 +373,19 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
-    protected class BoxItemHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-
+    protected class BoxItemViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         BoxListItem mItem;
+
+        View mView;
         ImageView mThumbView;
         TextView mNameView;
         TextView mMetaDescription;
         ProgressBar mProgressBar;
 
-        public BoxItemHolder(View itemView) {
+        public BoxItemViewHolder(View itemView) {
             super(itemView);
             itemView.setOnClickListener(this);
+            mView = itemView;
             mThumbView = (ImageView) itemView.findViewById(R.id.box_browsesdk_thumb_image);
             mNameView = (TextView) itemView.findViewById(R.id.box_browsesdk_name_text);
             mMetaDescription = (TextView) itemView.findViewById(R.id.metaline_description);
@@ -398,18 +394,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
         public void bindItem(BoxListItem item) {
             mItem = item;
-            mNameView.setText(mItem.getBoxItem().getName());
-            String description = mItem.getBoxItem().getModifiedAt() != null ?
-                    String.format(Locale.ENGLISH, "%s  • %s",
-                            //TODO: Need to localize date format
-                            new SimpleDateFormat("MMM d yyyy").format(mItem.getBoxItem().getModifiedAt()).toUpperCase(),
-                            localFileSizeToDisplay(mItem.getBoxItem().getSize())) :
-                    localFileSizeToDisplay(mItem.getBoxItem().getSize());
-            mMetaDescription.setText(description);
-            mThumbnailManager.setThumbnailIntoView(mThumbView, mItem.getBoxItem());
-            mProgressBar.setVisibility(View.GONE);
-            mMetaDescription.setVisibility(View.VISIBLE);
-            mThumbView.setVisibility(View.VISIBLE);
+            onBindBoxItemViewHolder(this);
         }
 
         public void setError(BoxListItem item) {
@@ -442,6 +427,26 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             return mItem;
         }
 
+        public ProgressBar getProgressBar() {
+            return mProgressBar;
+        }
+
+        public TextView getMetaDescription() {
+            return mMetaDescription;
+        }
+
+        public TextView getNameView() {
+            return mNameView;
+        }
+
+        public ImageView getThumbView() {
+            return mThumbView;
+        }
+
+        public View getView() {
+            return mView;
+        }
+
         @Override
         public void onClick(View v) {
             if (mItem.getIsError()) {
@@ -470,65 +475,20 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
                 }
             }
         }
-
-        /**
-         * Java version of routine to turn a long into a short user readable string.
-         * <p/>
-         * This routine is used if the JNI native C version is not available.
-         *
-         * @param numSize the number of bytes in the file.
-         * @return String Short human readable String e.g. 2.5 MB
-         */
-        private String localFileSizeToDisplay(final double numSize) {
-            final int constKB = 1024;
-            final int constMB = constKB * constKB;
-            final int constGB = constMB * constKB;
-            final double floatKB = 1024.0f;
-            final double floatMB = floatKB * floatKB;
-            final double floatGB = floatMB * floatKB;
-            final String BYTES = "B";
-            String textSize = "0 bytes";
-            String strSize = Double.toString(numSize);
-            double size;
-
-            if (numSize < constKB) {
-                textSize = strSize + " " + BYTES;
-            } else if ((numSize >= constKB) && (numSize < constMB)) {
-                size = numSize / floatKB;
-                textSize = String.format(Locale.ENGLISH, "%4.1f KB", size);
-            } else if ((numSize >= constMB) && (numSize < constGB)) {
-                size = numSize / floatMB;
-                textSize = String.format(Locale.ENGLISH, "%4.1f MB", size);
-            } else if (numSize >= constGB) {
-                size = numSize / floatGB;
-                textSize = String.format(Locale.ENGLISH, "%4.1f GB", size);
-            }
-            return textSize;
-        }
     }
 
-    /**
-     * Create a view holder that is compatible with BoxBrowseFragment.
-     * @param viewGroup viewGroup passed back by BoxItemAdatper.
-     * @param i the position.
-     * @return a new BoxItemHolder designed to hold onto views as well as set data into that view.
-     */
-    protected BoxItemHolder createBoxViewHolder(final ViewGroup viewGroup, int i){
-        View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
-        return new BoxItemHolder(view);
-    }
-
-    protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemHolder> {
+    protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemViewHolder> {
         protected ArrayList<BoxListItem> mListItems = new ArrayList<BoxListItem>();
         protected HashMap<String, BoxListItem> mItemsMap = new HashMap<String, BoxListItem>();
 
         @Override
-        public BoxItemHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
-            return createBoxViewHolder(viewGroup, i);
+        public BoxItemViewHolder onCreateViewHolder(ViewGroup viewGroup, int i) {
+            View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
+            return new BoxItemViewHolder(view);
         }
 
         @Override
-        public void onBindViewHolder(BoxItemHolder boxItemHolder, int i) {
+        public void onBindViewHolder(BoxItemViewHolder boxItemHolder, int i) {
             BoxListItem item = mListItems.get(i);
             if (item.getIsError()) {
                 boxItemHolder.setError(item);
@@ -623,7 +583,14 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
 
         public synchronized void add(BoxListItem listItem) {
-            // TODO: Add item filter here and set actual identifier
+            if (listItem.getBoxItem() != null) {
+                // If the item should not be visible, skip adding the item
+                if (!isItemVisible(listItem.getBoxItem())) {
+                    return;
+                }
+
+                listItem.setIsEnabled(isItemEnabled(listItem.getBoxItem()));
+            }
             mListItems.add(listItem);
             mItemsMap.put(listItem.getIdentifier(), listItem);
         }
@@ -642,16 +609,74 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
      * fragment to allow an item being tapped to be communicated to the activity
      */
     public interface OnFragmentInteractionListener {
+
         /**
-         * Called whenever an item in the RecyclerView is tapped
+         * Called whenever an item in the RecyclerView is clicked
          *
-         * @param item the item that was tapped
-         * @return whether the tap event should continue to be handled by the fragment
+         * @param item the item that was clicked
+         * @return whether the click event should continue to be handled by the fragment
          */
         boolean handleOnItemClick(BoxItem item);
     }
 
+    /**
+     * Called when a {@link BoxListItem} is bound to a ViewHolder. Customizations of UI elements
+     * should be done by overriding this method. If extending from a {@link BoxBrowseActivity}
+     * a custom BoxBrowseFolder fragment can be returned in
+     * {@link BoxBrowseActivity#createBrowseFolderFragment(BoxItem, BoxSession)}
+     *
+     * @param holder the BoxItemHolder
+     */
+    protected void onBindBoxItemViewHolder(BoxItemViewHolder holder) {
+        if (holder.getItem() == null || holder.getItem().getBoxItem() == null) {
+            return;
+        }
 
+        final BoxItem item = holder.getItem().getBoxItem();
+        holder.getNameView().setText(item.getName());
+        String description = item.getModifiedAt() != null ?
+                String.format(Locale.ENGLISH, "%s  • %s",
+                        //TODO: Need to localize date format
+                        new SimpleDateFormat("MMM d yyyy").format(item.getModifiedAt()).toUpperCase(),
+                        localFileSizeToDisplay(item.getSize())) :
+                localFileSizeToDisplay(item.getSize());
+        holder.getMetaDescription().setText(description);
+        mThumbnailManager.setThumbnailIntoView(holder.getThumbView(), item);
+        holder.getProgressBar().setVisibility(View.GONE);
+        holder.getMetaDescription().setVisibility(View.VISIBLE);
+        holder.getThumbView().setVisibility(View.VISIBLE);
+        if (!holder.getItem().getIsEnabled()) {
+            holder.getView().setEnabled(false);
+            holder.getNameView().setTextColor(getResources().getColor(R.color.box_browsesdk_hint));
+            holder.getMetaDescription().setTextColor(getResources().getColor(R.color.box_browsesdk_disabled_hint));
+            holder.getThumbView().setAlpha(0.26f);
+        } else {
+            holder.getView().setEnabled(true);
+            holder.getNameView().setTextColor(getResources().getColor(R.color.box_browsesdk_primary_text));
+            holder.getMetaDescription().setTextColor(getResources().getColor(R.color.box_browsesdk_hint));
+            holder.getThumbView().setAlpha(1f);
+        }
+    }
+
+    /**
+     * Defines the conditions for when a BoxItem should be shown as enabled
+     *
+     * @param item the BoxItem that should be enabled or not
+     * @return whether or not the BoxItem should be enabled
+     */
+    public boolean isItemEnabled(BoxItem item) {
+        return true;
+    }
+
+    /**
+     * Defines the conditions for when a BoxItem should be shown in the adapter
+     *
+     * @param item the BoxItem that should be visible or not
+     * @return whether or not the BoxItem should be visible
+     */
+    public boolean isItemVisible(BoxItem item) {
+        return true;
+    }
 
     /**
      * Download the thumbnail for a given file.
@@ -659,7 +684,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
      * @param fileId file id to download thumbnail for.
      * @return A FutureTask that is tasked with fetching information on the given folder.
      */
-    private FutureTask<Intent> downloadThumbnail(final String fileId, final File downloadLocation, final BoxItemHolder holder) {
+    private FutureTask<Intent> downloadThumbnail(final String fileId, final File downloadLocation, final BoxItemViewHolder holder) {
         return new FutureTask<Intent>(new Callable<Intent>() {
 
             @Override
@@ -713,7 +738,41 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             String key = iterator.next();
             System.out.println("extra: " + key + " => " + String.valueOf(intent.getExtras().get(key)));
         }
+    }
 
+    /**
+     * Java version of routine to turn a long into a short user readable string.
+     * <p/>
+     * This routine is used if the JNI native C version is not available.
+     *
+     * @param numSize the number of bytes in the file.
+     * @return String Short human readable String e.g. 2.5 MB
+     */
+    private String localFileSizeToDisplay(final double numSize) {
+        final int constKB = 1024;
+        final int constMB = constKB * constKB;
+        final int constGB = constMB * constKB;
+        final double floatKB = 1024.0f;
+        final double floatMB = floatKB * floatKB;
+        final double floatGB = floatMB * floatKB;
+        final String BYTES = "B";
+        String textSize = "0 bytes";
+        String strSize = Double.toString(numSize);
+        double size;
+
+        if (numSize < constKB) {
+            textSize = strSize + " " + BYTES;
+        } else if ((numSize >= constKB) && (numSize < constMB)) {
+            size = numSize / floatKB;
+            textSize = String.format(Locale.ENGLISH, "%4.1f KB", size);
+        } else if ((numSize >= constMB) && (numSize < constGB)) {
+            size = numSize / floatMB;
+            textSize = String.format(Locale.ENGLISH, "%4.1f MB", size);
+        } else if (numSize >= constGB) {
+            size = numSize / floatGB;
+            textSize = String.format(Locale.ENGLISH, "%4.1f GB", size);
+        }
+        return textSize;
     }
 
 }

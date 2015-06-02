@@ -3,9 +3,7 @@ package com.box.androidsdk.browse.fragments;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.box.androidsdk.browse.R;
@@ -14,7 +12,6 @@ import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.content.BoxApiSearch;
 import com.box.androidsdk.content.BoxConfig;
 import com.box.androidsdk.content.BoxException;
-import com.box.androidsdk.content.models.BoxFolder;
 import com.box.androidsdk.content.models.BoxItem;
 import com.box.androidsdk.content.models.BoxListItems;
 import com.box.androidsdk.content.models.BoxSession;
@@ -22,9 +19,6 @@ import com.box.androidsdk.content.requests.BoxRequestsSearch;
 
 import java.io.File;
 import java.io.Serializable;
-import java.text.SimpleDateFormat;
-import java.util.Iterator;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
@@ -182,24 +176,18 @@ public class BoxSearchFragment extends BoxBrowseFragment {
         super.onInfoFetched(intent);
     }
 
-    protected BoxItemHolder createBoxViewHolder(final ViewGroup viewGroup, int i) {
-        View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.box_browsesdk_list_item, viewGroup, false);
-        return new BoxItemHolder(view) {
-            @Override
-            public void bindItem(BoxListItem item) {
-                if (item.getBoxItem() != null) {
-                    mItem = item;
-                    mNameView.setText(item.getBoxItem().getName());
-                    mMetaDescription.setText(BoxSearchListAdapter.createPath(item.getBoxItem(), File.separator));
-                    mThumbnailManager.setThumbnailIntoView(mThumbView, item.getBoxItem());
-                    mProgressBar.setVisibility(View.GONE);
-                    mMetaDescription.setVisibility(View.VISIBLE);
-                    mThumbView.setVisibility(View.VISIBLE);
-                } else {
-                    super.bindItem(item);
-                }
-            }
-        };
+    @Override
+    protected void onBindBoxItemViewHolder(BoxItemViewHolder holder) {
+        if (holder.getItem() == null || holder.getItem().getBoxItem() == null) {
+            return;
+        }
+        final BoxItem item = holder.getItem().getBoxItem();
+        holder.getNameView().setText(item.getName());
+        holder.getMetaDescription().setText(BoxSearchListAdapter.createPath(item, File.separator));
+        mThumbnailManager.setThumbnailIntoView(holder.getThumbView(), item);
+        holder.getProgressBar().setVisibility(View.GONE);
+        holder.getMetaDescription().setVisibility(View.VISIBLE);
+        holder.getThumbView().setVisibility(View.VISIBLE);
     }
 
     /**

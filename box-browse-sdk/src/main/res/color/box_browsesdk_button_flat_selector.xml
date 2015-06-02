@@ -2,6 +2,6 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="@color/box_accent"
         android:state_enabled="true" />
-    <item android:color="@color/box_hint"
+    <item android:color="@color/box_browsesdk_hint"
         android:state_enabled="false" />
 </selector>

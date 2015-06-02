@@ -23,7 +23,6 @@ import com.box.androidsdk.content.requests.BoxRequestsSearch;
 import com.box.androidsdk.content.requests.BoxResponse;
 import com.box.androidsdk.content.utils.SdkUtils;
 
-import java.util.ArrayList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -62,12 +61,12 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
 
     }
 
-    protected BoxFolder getCurrentFolder(){
+    protected BoxFolder getCurrentFolder() {
         Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.box_browsesdk_fragment_container);
-        if (fragment instanceof BoxBrowseFolderFragment){
-            return ((BoxBrowseFolderFragment)fragment).getFolder();
+        if (fragment instanceof BoxBrowseFolderFragment) {
+            return ((BoxBrowseFolderFragment) fragment).getFolder();
         }
-        return (BoxFolder)mItem;
+        return (BoxFolder) mItem;
     }
 
     @Override
@@ -90,28 +89,37 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
         return frag instanceof BoxBrowseFragment ? (BoxBrowseFragment) frag : null;
     }
 
-    protected void handleBoxFolderClicked(final BoxFolder boxFolder){
+    protected void handleBoxFolderClicked(final BoxFolder boxFolder) {
         FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
 
         // All fragments will always navigate into folders
         BoxBrowseFolderFragment browseFolderFragment = createBrowseFolderFragment(boxFolder, mSession);
         trans.replace(R.id.box_browsesdk_fragment_container, browseFolderFragment);
-          if (getSupportFragmentManager().getBackStackEntryCount() > 0 || getSupportFragmentManager().getFragments() != null){
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0 || getSupportFragmentManager().getFragments() != null) {
             trans.addToBackStack(BoxBrowseFragment.TAG);
-          }
+        }
         trans.commit();
     }
 
     @Override
     public void onBoxItemSelected(BoxItem boxItem) {
         clearSearch();
-        if (boxItem instanceof BoxFolder){
-            handleBoxFolderClicked((BoxFolder)boxItem);
+        if (boxItem instanceof BoxFolder) {
+            handleBoxFolderClicked((BoxFolder) boxItem);
         }
     }
 
-    protected BoxBrowseFolderFragment createBrowseFolderFragment(final BoxItem folder, final BoxSession session){
-        return BoxBrowseFolderFragment.newInstance((BoxFolder)folder, mSession);
+    /**
+     * Creates a {@link BoxBrowseFolderFragment} that will be used in the activity to display
+     * BoxItems. For a more customized experience, a custom implementation of the fragment can
+     * be provided here.
+     *
+     * @param folder the folder that will be browsed
+     * @param session the session that will be used for browsing
+     * @return Browsing fragment that will be used to show the BoxItems
+     */
+    protected BoxBrowseFolderFragment createBrowseFolderFragment(final BoxItem folder, final BoxSession session) {
+        return BoxBrowseFolderFragment.newInstance((BoxFolder) folder, mSession);
     }
 
 
@@ -127,20 +135,20 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
 
     @Override
     public BoxRequestsSearch.Search onSearchRequested(BoxRequestsSearch.Search searchRequest) {
-        if (!getIntent().getBooleanExtra(EXTRA_SHOULD_SEARCH_ALL, false)){
+        if (!getIntent().getBooleanExtra(EXTRA_SHOULD_SEARCH_ALL, false)) {
             // if not specified by default search will only search the currently displayed folder.
             Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.box_browsesdk_fragment_container);
             if (fragment instanceof BoxBrowseFolderFragment) {
                 searchRequest.limitAncestorFolderIds(new String[]{((BoxBrowseFolderFragment) fragment).getFolder().getId()});
             } else {
-                searchRequest.limitAncestorFolderIds(new String[] {mItem.getId()});
+                searchRequest.limitAncestorFolderIds(new String[]{mItem.getId()});
             }
         }
         return searchRequest;
     }
 
-    private void clearSearch(){
-        if (mSearchViewMenuItem == null){
+    private void clearSearch() {
+        if (mSearchViewMenuItem == null) {
             return;
         }
         BoxSearchView searchView = (BoxSearchView) MenuItemCompat.getActionView(mSearchViewMenuItem);
@@ -151,10 +159,9 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
     public void onMoreResultsRequested(BoxRequestsSearch.Search searchRequest) {
         clearSearch();
         Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.box_browsesdk_fragment_container);
-        if (fragment instanceof BoxSearchFragment){
-            ((BoxSearchFragment)fragment).search(onSearchRequested(searchRequest));
-        }
-        else {
+        if (fragment instanceof BoxSearchFragment) {
+            ((BoxSearchFragment) fragment).search(onSearchRequested(searchRequest));
+        } else {
             FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
 
             // All fragments will always navigate into folders
@@ -164,7 +171,6 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
                     .commit();
         }
     }
-
 
     /**
      * Create a builder object that can be used to construct an intent to launch an instance of this activity.
@@ -178,10 +184,11 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
 
         /**
          * Create an new Intent Builder designed to create an intent to launch a child of BoxBrowseActivity.
+         *
          * @param context current context.
          * @param session an authenticated session.
          */
-        public IntentBuilder(final Context context, final BoxSession session){
+        public IntentBuilder(final Context context, final BoxSession session) {
             super();
             mContext = context;
             mSession = session;
@@ -193,31 +200,29 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
         }
 
         /**
-         *
          * @param folder folder to start browsing in.
          * @return an IntentBuilder which can create an instance of this class.
          */
-        public R setStartingFolder(final BoxFolder folder){
+        public R setStartingFolder(final BoxFolder folder) {
             mFolder = folder;
             if (folder == null || SdkUtils.isBlank(folder.getId()))
                 throw new IllegalArgumentException("A valid folder must be provided");
-            return (R)this;
+            return (R) this;
         }
 
         /**
-         *
          * @param searchAll true if searching should search entire account, false if searching should only search current folder. False by default.
          * @return an IntentBuilder which can create an instance of this class.
          */
-        public R setShouldSearchAll(final boolean searchAll){
+        public R setShouldSearchAll(final boolean searchAll) {
             mShouldSearchAll = searchAll;
-            return (R)this;
+            return (R) this;
         }
+
         /**
-         *
          * @param intent intent to add extras from this builder to.
          */
-        protected void addExtras(final Intent intent){
+        protected void addExtras(final Intent intent) {
             intent.putExtra(EXTRA_SHOULD_SEARCH_ALL, mShouldSearchAll);
         }
 
@@ -225,9 +230,10 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
 
         /**
          * Create an intent to launch an instance of this activity.
+         *
          * @return an intent to launch an instance of this activity.
          */
-        public Intent createIntent(){
+        public Intent createIntent() {
             Intent intent = createLaunchIntent();
             addExtras(intent);
             return intent;
