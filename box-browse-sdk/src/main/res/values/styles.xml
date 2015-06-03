@@ -18,7 +18,7 @@
 
     <style name="BoxHintText" parent="@android:style/Widget.TextView">
         <item name="android:textAppearance">@style/TextAppearance.AppCompat.Body1</item>
-        <item name="android:textColor">@color/box_hint_foreground</item>
+        <item name="android:textColor">@color/box_browsesdk_hint</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
     </style>

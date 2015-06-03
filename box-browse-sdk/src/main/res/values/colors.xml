@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="box_browsesdk_accent">?attr/colorAccent</color>
+    <color name="box_browsesdk_accent">@color/accent_material_light</color>
     <color name="box_browsesdk_primary_text">@color/primary_text_default_material_light</color>
     <color name="box_browsesdk_hint">@color/hint_foreground_material_light</color>
     <color name="box_browsesdk_disabled_hint">@color/dim_foreground_disabled_material_light</color>

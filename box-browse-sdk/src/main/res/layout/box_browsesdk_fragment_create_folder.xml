@@ -3,9 +3,9 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin">
+    android:paddingLeft="@dimen/box_browsesdk_horizontal_margin"
+    android:paddingTop="@dimen/box_browsesdk_horizontal_margin"
+    android:paddingRight="@dimen/box_browsesdk_horizontal_margin">
     <TextView
         style="@style/BoxDialogTitle"
         android:layout_width="wrap_content"
