@@ -34,9 +34,8 @@ public class SampleBrowseActivity extends ActionBarActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sample_browse);
-        BoxConfig.IS_LOG_ENABLED = false;
-        BoxConfig.CLIENT_ID = "m9bcgls0kffgyclmt9hz0jbs9ua7m0yy";
-        BoxConfig.CLIENT_SECRET = "mojjTtvkNvh4T2B2mNYkOtfkd0uo6zod";
+        BoxConfig.CLIENT_ID = "your-client-id";
+        BoxConfig.CLIENT_SECRET = "your-client-secret";
         initUI();
 
         session = new BoxSession(this);
