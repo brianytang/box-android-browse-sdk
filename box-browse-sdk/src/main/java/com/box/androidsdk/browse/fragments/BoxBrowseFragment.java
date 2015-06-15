@@ -736,14 +736,6 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         });
     }
 
-    public static void logIntent(final Intent intent) {
-        Iterator<String> iterator = intent.getExtras().keySet().iterator();
-        while (iterator.hasNext()) {
-            String key = iterator.next();
-            System.out.println("extra: " + key + " => " + String.valueOf(intent.getExtras().get(key)));
-        }
-    }
-
     /**
      * Java version of routine to turn a long into a short user readable string.
      * <p/>

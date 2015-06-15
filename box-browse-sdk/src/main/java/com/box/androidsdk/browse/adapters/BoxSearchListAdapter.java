@@ -323,7 +323,6 @@ public class BoxSearchListAdapter extends ResourceCursorAdapter implements BoxFu
             try {
 
                 if (search != null) {
-                    System.out.println(search.getQuery());
                     return new BoxSearchCursor(search.send());
                 }
             } catch (BoxException e){

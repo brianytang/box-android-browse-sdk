@@ -218,13 +218,5 @@ public class BoxSearchFragment extends BoxBrowseFragment {
             }
             return search;
         }
-
-        public void displayParams(){
-            System.out.println(getQuery());
-            for (Map.Entry<String, String> entry : mQueryMap.entrySet()) {
-              System.out.println(entry.getKey() + " -> " + entry.getValue());
-            }
-        }
-
     }
 }
