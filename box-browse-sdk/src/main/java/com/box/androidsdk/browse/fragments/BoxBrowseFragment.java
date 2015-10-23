@@ -15,22 +15,30 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
+import android.util.SparseArray;
+import android.util.SparseBooleanArray;
 import android.util.TypedValue;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.box.androidsdk.browse.R;
 import com.box.androidsdk.browse.activities.BoxBrowseActivity;
+import com.box.androidsdk.browse.adapters.RecyclerItemClickListener;
 import com.box.androidsdk.browse.uidata.BoxListItem;
 import com.box.androidsdk.browse.uidata.ThumbnailManager;
 import com.box.androidsdk.content.BoxApiFile;
@@ -85,7 +93,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
     protected static final String EXTRA_LIMIT = "BoxBrowseFragment_Limit";
     protected static final String EXTRA_FOLDER = "BoxBrowseFragment_Folder";
     protected static final String EXTRA_COLLECTION = "BoxBrowseFragment_Collection";
-    private static List<String> THUMBNAIL_MEDIA_EXTENSIONS = Arrays.asList(new String[] {"gif", "jpeg", "jpg", "bmp", "svg", "png", "tiff"});
+    private static List<String> THUMBNAIL_MEDIA_EXTENSIONS = Arrays.asList(new String[]{"gif", "jpeg", "jpg", "bmp", "svg", "png", "tiff"});
 
     protected String mUserId;
     protected BoxSession mSession;
@@ -159,6 +167,8 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         // Required empty public constructor
     }
 
+
+    protected boolean mIsMultiSelectMode = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -235,6 +245,24 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             displayBoxList(mBoxListItems);
 
         }
+
+        mItemsView.addOnItemTouchListener(new RecyclerItemClickListener(getActivity(), mItemsView, new RecyclerItemClickListener.OnItemClickListener()
+        {
+            @Override
+            public void onItemClick(View view, int position)
+            {
+                if (mIsMultiSelectMode) {
+                    mAdapter.toggleSelection(position);
+                }
+            }
+
+            @Override
+            public void onItemLongClick(View view, int position) {
+                mAdapter.toggleSelection(position);
+            }
+        }));
+
+
         return rootView;
     }
 
@@ -340,6 +368,10 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
     }
 
+    public BoxListItems getSelectedItems() {
+        return mAdapter.getSelectedItems();
+    }
+
     protected abstract FutureTask<Intent> fetchItems(final int offset, final int limit);
 
     /**
@@ -388,6 +420,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         TextView mNameView;
         TextView mMetaDescription;
         ProgressBar mProgressBar;
+        CheckBox mCheckBox;
 
         public BoxItemViewHolder(View itemView) {
             super(itemView);
@@ -397,11 +430,15 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             mNameView = (TextView) itemView.findViewById(R.id.box_browsesdk_name_text);
             mMetaDescription = (TextView) itemView.findViewById(R.id.metaline_description);
             mProgressBar = (ProgressBar) itemView.findViewById((R.id.spinner));
+            mCheckBox = (CheckBox) itemView.findViewById(R.id.box_browsesdk_selected);
             setAccentColor(getResources(), mProgressBar);
         }
 
         public void bindItem(BoxListItem item) {
             mItem = item;
+            int visibility = mIsMultiSelectMode ? View.VISIBLE : View.GONE;
+            mCheckBox.setVisibility(visibility);
+            mCheckBox.setChecked(mItem.getIsSelected());
             onBindBoxItemViewHolder(this);
         }
 
@@ -431,6 +468,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
             mNameView.setText(activity.getResources().getString(R.string.boxsdk_Please_wait));
         }
 
+        public void setSelected() {
+        }
+
         public BoxListItem getItem() {
             return mItem;
         }
@@ -457,7 +497,11 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
         @Override
         public void onClick(View v) {
-            if(mSwipeRefresh.isRefreshing()){
+            if (mIsMultiSelectMode) {
+                return;
+            }
+
+            if (mSwipeRefresh.isRefreshing()) {
                 return;
             }
             if (mItem == null) {
@@ -492,7 +536,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
-    protected  class BoxItemAdapter extends RecyclerView.Adapter<BoxItemViewHolder> {
+    protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemViewHolder> {
         protected ArrayList<BoxListItem> mListItems = new ArrayList<BoxListItem>();
         protected HashMap<String, BoxListItem> mItemsMap = new HashMap<String, BoxListItem>();
 
@@ -612,6 +656,58 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
                 notifyItemChanged(index);
             }
         }
+
+
+        /**
+         * Multi Select
+         **/
+        private SparseBooleanArray selectedItems = new SparseBooleanArray();
+
+        public void toggleSelection(int pos) {
+            BoxListItem item = mListItems.get(pos);
+            if (isSelected(pos)) {
+                selectedItems.delete(pos);
+                item.setIsSelected(false);
+                if (selectedItems.size() == 0) {
+                    mIsMultiSelectMode = false;
+                    mAdapter.notifyDataSetChanged();
+                    mListener.onSelectionModeChanged(SelectionMode.SINGLE);
+                }
+            } else {
+                boolean isFirstSelection = selectedItems.size() == 0;
+                selectedItems.put(pos, true);
+                item.setIsSelected(true);
+                if (isFirstSelection) {
+                    mIsMultiSelectMode = true;
+                    mAdapter.notifyDataSetChanged();
+                    mListener.onSelectionModeChanged(SelectionMode.MULTI);
+                }
+            }
+            notifyItemChanged(pos);
+        }
+
+        public boolean isSelected(int pos) {
+            return selectedItems.get(pos, false);
+        }
+
+        public void clearSelections() {
+            selectedItems.clear();
+            notifyDataSetChanged();
+        }
+
+        public int getSelectedItemCount() {
+            return selectedItems.size();
+        }
+
+        public BoxListItems getSelectedItems() {
+            BoxListItems items =
+                    new BoxListItems();
+            for (int i = 0; i < selectedItems.size(); i++) {
+                items.add(mBoxListItems.get(selectedItems.keyAt(i)));
+            }
+            return items;
+        }
+
     }
 
     /**
@@ -627,6 +723,8 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
          * @return whether the click event should continue to be handled by the fragment
          */
         boolean handleOnItemClick(BoxItem item);
+
+        boolean onSelectionModeChanged(SelectionMode mode);
     }
 
     /**
@@ -793,5 +891,9 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
+    public enum SelectionMode {
+        MULTI,
+        SINGLE
+    }
 
 }

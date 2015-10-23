@@ -37,6 +37,7 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
     private static final ConcurrentLinkedQueue<BoxResponse> RESPONSE_QUEUE = new ConcurrentLinkedQueue<BoxResponse>();
     private static ThreadPoolExecutor mApiExecutor;
     private MenuItem mSearchViewMenuItem;
+    protected BoxBrowseFolderFragment browseFolderFragment;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,6 +84,11 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
         }
     }
 
+    @Override
+    public boolean onSelectionModeChanged(BoxBrowseFragment.SelectionMode mode) {
+        return false;
+    }
+
     protected BoxBrowseFragment getTopBrowseFragment() {
         FragmentManager fragmentManager = getSupportFragmentManager();
         Fragment frag = fragmentManager.findFragmentById(R.id.box_browsesdk_fragment_container);
@@ -93,7 +99,7 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
         FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
 
         // All fragments will always navigate into folders
-        BoxBrowseFolderFragment browseFolderFragment = createBrowseFolderFragment(boxFolder, mSession);
+        browseFolderFragment = createBrowseFolderFragment(boxFolder, mSession);
         trans.replace(R.id.box_browsesdk_fragment_container, browseFolderFragment);
         if (getSupportFragmentManager().getBackStackEntryCount() > 0 || getSupportFragmentManager().getFragments() != null) {
             trans.addToBackStack(BoxBrowseFragment.TAG);
@@ -179,10 +185,10 @@ public abstract class BoxBrowseActivity extends BoxThreadPoolExecutorActivity im
      * Create a builder object that can be used to construct an intent to launch an instance of this activity.
      */
     protected static abstract class IntentBuilder<R> {
-        final BoxSession mSession;
-        final Context mContext;
-        BoxFolder mFolder;
-        boolean mShouldSearchAll = false;
+        protected final BoxSession mSession;
+        protected final Context mContext;
+        protected BoxFolder mFolder;
+        protected boolean mShouldSearchAll = false;
 
 
         /**

@@ -24,6 +24,7 @@ public final class BoxListItem {
     private String mIdentifier;
     private boolean mIsError = false;
     private boolean mIsEnabled = true;
+    private boolean mIsSelected = false;
 
     /**
      * Constructor.
@@ -160,4 +161,11 @@ public final class BoxListItem {
         mIdentifier = identifier;
     }
 
+    public void setIsSelected(boolean isSelected) {
+        mIsSelected = isSelected;
+    }
+
+    public boolean getIsSelected() {
+        return mIsSelected;
+    }
 }

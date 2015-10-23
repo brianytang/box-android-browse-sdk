@@ -45,6 +45,7 @@ public abstract class BoxThreadPoolExecutorActivity extends AppCompatActivity {
 
     protected BoxSession mSession;
     protected BoxItem mItem;
+    protected Toolbar actionBar;
 
     protected static final int DEFAULT_TIMEOUT = 30 * 1000;
     private static final int  DEFAULT_SPINNER_DELAY = 500;
@@ -324,7 +325,7 @@ public abstract class BoxThreadPoolExecutorActivity extends AppCompatActivity {
      * This will show a material themed toolbar with a back button that will finish the Activity.
      */
     protected void initToolbar() {
-        Toolbar actionBar = (Toolbar) findViewById(R.id.box_action_bar);
+        actionBar = (Toolbar) findViewById(R.id.box_action_bar);
         setSupportActionBar(actionBar);
         actionBar.setNavigationIcon(R.drawable.ic_box_browsesdk_arrow_back_grey_24dp);
         actionBar.setNavigationOnClickListener(new View.OnClickListener() {
