@@ -135,7 +135,7 @@ public class BoxBrowseFolderFragment extends BoxBrowseFragment {
                 try {
                     BoxRequestsFolder.GetFolderInfo req = new BoxApiFolder(mSession).getInfoRequest(mFolderId)
                             // TODO: Should clean-up to only include required fields
-                            .setFields(BoxFolder.ALL_FIELDS)
+                            .setFields(BoxFolder.FIELD_NAME, BoxFolder.FIELD_MODIFIED_AT, BoxFolder.FIELD_MODIFIED_BY, BoxFolder.FIELD_SIZE, BoxFolder.FIELD_ITEM_COLLECTION) //BoxFolder.ALL_FIELDS)
                             .setLimit(mLimit);
                     BoxFolder bf = req.send();
                     if (bf != null) {
