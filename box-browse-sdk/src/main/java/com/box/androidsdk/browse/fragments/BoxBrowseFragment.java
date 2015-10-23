@@ -368,8 +368,8 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
     }
 
-    public BoxListItems getSelectedItems() {
-        return mAdapter.getSelectedItems();
+    public BoxItemAdapter getAdapter() {
+        return mAdapter;
     }
 
     protected abstract FutureTask<Intent> fetchItems(final int offset, final int limit);
@@ -536,7 +536,7 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
         }
     }
 
-    protected class BoxItemAdapter extends RecyclerView.Adapter<BoxItemViewHolder> {
+    public class BoxItemAdapter extends RecyclerView.Adapter<BoxItemViewHolder> {
         protected ArrayList<BoxListItem> mListItems = new ArrayList<BoxListItem>();
         protected HashMap<String, BoxListItem> mItemsMap = new HashMap<String, BoxListItem>();
 
@@ -692,6 +692,8 @@ public abstract class BoxBrowseFragment extends Fragment implements SwipeRefresh
 
         public void clearSelections() {
             selectedItems.clear();
+            mIsMultiSelectMode = false;
+            mListener.onSelectionModeChanged(SelectionMode.MULTI.SINGLE);
             notifyDataSetChanged();
         }
 
